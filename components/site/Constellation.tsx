@@ -18,7 +18,12 @@ import { useEffect, useRef } from "react";
 //   - particles are batched by colour and depth band, so a frame issues a few
 //     dozen stroke() calls instead of one per triangle
 
-const COLORS = ["#8052FF", "#FFB829", "#15846E", "#B08CFF", "#4C7DFF", "#FF5FD2", "#37D0B0", "#FFFFFF"];
+// The reference does not colour particles at random — colour tracks how the
+// surface faces a light coming from the upper left: gold along the lit rim,
+// white where the surface faces the viewer, violet and blue falling away into
+// shadow. Random colour per particle is exactly what makes a particle field
+// read as confetti instead of as a lit object.
+const RAMP = ["#FFB829", "#FFD98A", "#FFFFFF", "#DCD6F5", "#B08CFF", "#8052FF", "#4C7DFF", "#15846E"];
 
 const DEPTH_BANDS = 5; // Far-to-near bands; drive size, alpha and draw order.
 const CAMERA = 3.2; // Perspective distance in shape-space units.
@@ -26,14 +31,18 @@ const CAMERA = 3.2; // Perspective distance in shape-space units.
 type Vec3 = { x: number; y: number; z: number };
 
 type Particle = {
-  /** One position per shape — index matches SHAPES. */
+  /** One position per shape — index matches SHAPE_NAMES. */
   shapes: Vec3[];
   size: number;
   spin: number;
   phase: number;
+  /** Small per-particle shift along the ramp, so the field keeps chromatic
+   *  variety without dissolving into noise. */
+  tint: number;
 };
 
-type Bucket = { color: string; items: Particle[] };
+/** Big outlined glyphs drifting in front of the field, as in the reference. */
+type Glyph = { x: number; y: number; size: number; spin: number; drift: number; color: string; alpha: number };
 
 // ---------------------------------------------------------------- silhouettes
 
@@ -126,14 +135,8 @@ function drawBulb(ctx: CanvasRenderingContext2D, w: number, h: number) {
   ctx.closePath();
   ctx.fill();
 
-  // Hollow out the glass, leaving a wall — the particles then trace the
-  // envelope instead of filling it as a solid lump.
-  ctx.globalCompositeOperation = "destination-out";
-  ctx.beginPath();
-  ctx.ellipse(x(0.5), y(0.30), x(0.32), y(0.20), 0, 0, Math.PI * 2);
-  ctx.fill();
-
   // Threads on the base.
+  ctx.globalCompositeOperation = "destination-out";
   ctx.strokeStyle = "#000";
   ctx.lineCap = "round";
   ctx.lineWidth = Math.max(2, w * 0.022);
@@ -143,11 +146,8 @@ function drawBulb(ctx: CanvasRenderingContext2D, w: number, h: number) {
     ctx.lineTo(x(0.62), y(ty));
     ctx.stroke();
   }
-  ctx.globalCompositeOperation = "source-over";
-
-  // Filament, sitting inside the hollow glass.
-  ctx.strokeStyle = "#fff";
-  ctx.lineWidth = Math.max(2, w * 0.018);
+  // Filament, carved out of the envelope so it reads as a void in the glass.
+  ctx.lineWidth = Math.max(3, w * 0.030);
   ctx.beginPath();
   ctx.moveTo(x(0.43), y(0.46));
   ctx.lineTo(x(0.43), y(0.34));
@@ -157,6 +157,8 @@ function drawBulb(ctx: CanvasRenderingContext2D, w: number, h: number) {
   ctx.lineTo(x(0.57), y(0.34));
   ctx.lineTo(x(0.57), y(0.46));
   ctx.stroke();
+
+  ctx.globalCompositeOperation = "source-over";
 }
 
 // --------------------------------------------------------------- point clouds
@@ -207,7 +209,7 @@ function sampleSilhouette(
     const py = rand() * mh;
     if (data[(Math.floor(py) * mw + Math.floor(px)) * 4 + 3] < 128) continue;
     // Interior points still appear, just sparsely, so the shape keeps volume.
-    if (rand() > 0.14 + 0.86 * edgeness(px, py)) continue;
+    if (rand() > 0.45 + 0.55 * edgeness(px, py)) continue;
     // Normalised so the longer axis spans [-1, 1].
     const nx = (px / mw - 0.5) * 2;
     const ny = ((py / mh - 0.5) * 2) / aspect;
@@ -281,7 +283,8 @@ export default function Constellation() {
     if (!ctx) return;
 
     const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    let buckets: Bucket[] = [];
+    let particles: Particle[] = [];
+    let glyphs: Glyph[] = [];
     let raf = 0;
     let w = 0;
     let h = 0;
@@ -306,9 +309,9 @@ export default function Constellation() {
       canvas!.style.height = `${h}px`;
       ctx!.setTransform(dpr, 0, 0, dpr, 0, 0);
 
-      baseScale = Math.min(w * (w >= 900 ? 0.32 : 0.46), h * 0.44);
+      baseScale = Math.min(w * (w >= 900 ? 0.33 : 0.46), h * 0.44);
       slots = Array.from(document.querySelectorAll<HTMLElement>("[data-orb]"));
-      return Math.round(Math.min(3000, (w * h) / 520));
+      return Math.round(Math.min(5600, (w * h) / 280));
     }
 
     /**
@@ -328,24 +331,27 @@ export default function Constellation() {
         sampleScatter(count, 1.5, rand),
       ];
 
-      const index = new Map<string, Bucket>();
-      const next: Bucket[] = [];
+      const next: Particle[] = [];
       for (let i = 0; i < count; i++) {
-        const color = COLORS[Math.floor(rand() * COLORS.length)];
-        let bucket = index.get(color);
-        if (!bucket) {
-          bucket = { color, items: [] };
-          index.set(color, bucket);
-          next.push(bucket);
-        }
-        bucket.items.push({
+        next.push({
           shapes: clouds.map((c) => c[i]),
-          size: 2 + rand() * 2.4,
+          size: 1.3 + rand() * 1.7,
           spin: rand() * Math.PI * 2,
           phase: rand() * Math.PI * 2,
+          tint: Math.round(rand() * 2) - 1,
         });
       }
-      buckets = next;
+      particles = next;
+
+      glyphs = Array.from({ length: 14 }, () => ({
+        x: rand(),
+        y: rand(),
+        size: 22 + rand() * 46,
+        spin: rand() * Math.PI * 2,
+        drift: 0.4 + rand() * 1.2,
+        color: RAMP[Math.floor(rand() * 5)],
+        alpha: 0.06 + rand() * 0.14,
+      }));
     }
 
     /**
@@ -372,7 +378,7 @@ export default function Constellation() {
       if (!best) return { x: w * 0.5, y: h * 0.5, scale: baseScale * 1.15, alpha: 0.12, shape: view.shape };
 
       const rect = best.getBoundingClientRect();
-      const side = best.dataset.orb === "left" ? 0.28 : 0.72;
+      const side = best.dataset.orb === "left" ? 0.30 : 0.70;
       const shape = Math.max(0, SHAPE_NAMES.indexOf(best.dataset.shape ?? "brain"));
       return {
         // Below the two-column breakpoint there is no free half, so the field
@@ -420,61 +426,89 @@ export default function Constellation() {
       const cosX = Math.cos(tilt);
       const sinX = Math.sin(tilt);
 
-      // Batched by colour, then binned by depth so nearer particles draw last
-      // and read brighter — one stroke() per colour/band pair.
-      const layers: { color: string; alpha: number; path: Path2D }[] = [];
+      // Light from the upper left, slightly in front. Shading a point cloud by
+      // how its surface faces this is what turns a scatter of coloured
+      // triangles into a legible, lit object.
+      const LX = -0.55, LY = -0.62, LZ = 0.56;
 
-      for (const bucket of buckets) {
-        const byBand: Path2D[] = Array.from({ length: DEPTH_BANDS }, () => new Path2D());
+      // Binned by ramp step and depth: one stroke() per pair, so the whole
+      // field costs a few dozen draw calls no matter how many particles.
+      const paths: Path2D[] = Array.from({ length: RAMP.length * DEPTH_BANDS }, () => new Path2D());
 
-        for (const particle of bucket.items) {
-          const a = particle.shapes[from];
-          const b = particle.shapes[to];
-          const x0 = a.x + (b.x - a.x) * blend;
-          const y0 = a.y + (b.y - a.y) * blend;
-          const z0 = a.z + (b.z - a.z) * blend;
+      for (const particle of particles) {
+        const a = particle.shapes[from];
+        const b = particle.shapes[to];
+        const x0 = a.x + (b.x - a.x) * blend;
+        const y0 = a.y + (b.y - a.y) * blend;
+        const z0 = a.z + (b.z - a.z) * blend;
 
-          // Rotate on y, then tilt on x.
-          const rx = x0 * cosY + z0 * sinY;
-          const rz = -x0 * sinY + z0 * cosY;
-          const ry = y0 * cosX - rz * sinX;
-          const rzz = y0 * sinX + rz * cosX;
+        // Rotate on y, then tilt on x.
+        const rx = x0 * cosY + z0 * sinY;
+        const rz = -x0 * sinY + z0 * cosY;
+        const ry = y0 * cosX - rz * sinX;
+        const rzz = y0 * sinX + rz * cosX;
 
-          // Perspective: nearer points are larger and spread further apart.
-          const depth = CAMERA / (CAMERA + rzz);
-          const drift = reduced ? 0 : Math.sin(t / 1600 + particle.phase) * 1.2;
-          const cx = originX + rx * scale * depth + drift;
-          const cy = originY + ry * scale * depth + drift * 0.6;
+        // Every cloud is centred on the origin, so the direction out from the
+        // centre stands in for the surface normal — accurate enough for a
+        // shell, and free, since the rotated position is already to hand.
+        const len = Math.hypot(rx, ry, rzz) || 1;
+        const lit = (rx * LX + ry * LY + rzz * LZ) / len;
+        const step = Math.min(
+          RAMP.length - 1,
+          Math.max(0, Math.round((1 - (lit + 1) / 2) * (RAMP.length - 1)) + particle.tint)
+        );
 
-          const s = particle.size * depth;
-          const rot = particle.spin + spin * 0.5;
-          const cr = Math.cos(rot);
-          const sr = Math.sin(rot);
+        // Perspective: nearer points are larger and spread further apart.
+        const depth = CAMERA / (CAMERA + rzz);
+        const drift = reduced ? 0 : Math.sin(t / 1600 + particle.phase) * 1.2;
+        const cx = originX + rx * scale * depth + drift;
+        const cy = originY + ry * scale * depth + drift * 0.6;
 
-          const band = Math.min(DEPTH_BANDS - 1, Math.max(0, Math.floor(((depth - 0.65) / 0.75) * DEPTH_BANDS)));
-          const path = byBand[band];
-          path.moveTo(cx + s * sr, cy - s * cr);
-          path.lineTo(cx + (s * 0.87 * cr - s * 0.5 * sr), cy + (s * 0.87 * sr + s * 0.5 * cr));
-          path.lineTo(cx + (-s * 0.87 * cr - s * 0.5 * sr), cy + (-s * 0.87 * sr + s * 0.5 * cr));
-          path.closePath();
-        }
+        const size = particle.size * depth;
+        const rot = particle.spin + spin * 0.5;
+        const cr = Math.cos(rot);
+        const sr = Math.sin(rot);
 
-        for (let band = 0; band < DEPTH_BANDS; band++) {
-          layers.push({
-            color: bucket.color,
-            alpha: (0.2 + (band / (DEPTH_BANDS - 1)) * 0.7) * view.alpha,
-            path: byBand[band],
-          });
-        }
+        const band = Math.min(DEPTH_BANDS - 1, Math.max(0, Math.floor(((depth - 0.65) / 0.75) * DEPTH_BANDS)));
+        const path = paths[step * DEPTH_BANDS + band];
+        path.moveTo(cx + size * sr, cy - size * cr);
+        path.lineTo(cx + (size * 0.87 * cr - size * 0.5 * sr), cy + (size * 0.87 * sr + size * 0.5 * cr));
+        path.lineTo(cx + (-size * 0.87 * cr - size * 0.5 * sr), cy + (-size * 0.87 * sr + size * 0.5 * cr));
+        path.closePath();
       }
 
       c.lineWidth = 1;
-      layers.sort((l, r) => l.alpha - r.alpha);
-      for (const layer of layers) {
-        c.globalAlpha = layer.alpha;
-        c.strokeStyle = layer.color;
-        c.stroke(layer.path);
+      // Furthest band first so nearer, brighter particles land on top.
+      for (let band = 0; band < DEPTH_BANDS; band++) {
+        c.globalAlpha = (0.28 + (band / (DEPTH_BANDS - 1)) * 0.62) * view.alpha;
+        for (let step = 0; step < RAMP.length; step++) {
+          c.strokeStyle = RAMP[step];
+          c.stroke(paths[step * DEPTH_BANDS + band]);
+        }
       }
+
+      // Foreground glyphs: a handful of large outlined triangles drifting in
+      // front of the field, the decorative layer the reference floats over its
+      // hero art.
+      c.lineWidth = 1.5;
+      for (const glyph of glyphs) {
+        const wobble = reduced ? 0 : Math.sin(t / 4200 + glyph.spin) * 26 * glyph.drift;
+        const gx = glyph.x * w + wobble;
+        const gy = glyph.y * h + wobble * 0.5;
+        const rot = glyph.spin + (reduced ? 0 : t / 26000) * glyph.drift;
+        const cr = Math.cos(rot);
+        const sr = Math.sin(rot);
+        const gs = glyph.size;
+        c.globalAlpha = glyph.alpha * view.alpha;
+        c.strokeStyle = glyph.color;
+        c.beginPath();
+        c.moveTo(gx + gs * sr, gy - gs * cr);
+        c.lineTo(gx + (gs * 0.87 * cr - gs * 0.5 * sr), gy + (gs * 0.87 * sr + gs * 0.5 * cr));
+        c.lineTo(gx + (-gs * 0.87 * cr - gs * 0.5 * sr), gy + (-gs * 0.87 * sr + gs * 0.5 * cr));
+        c.closePath();
+        c.stroke();
+      }
+
       c.globalAlpha = 1;
     }
 
