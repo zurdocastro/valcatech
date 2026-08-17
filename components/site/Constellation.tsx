@@ -22,20 +22,31 @@ import { useEffect, useRef } from "react";
 // coming from the upper left, which is what makes a cloud of triangles read as
 // a lit object rather than confetti. The reference runs gold through white to
 // violet; this is the same construction in vibrant pink, green and purple.
-const RAMP = ["#FF2D92", "#FF7ABF", "#FFFFFF", "#8CFFDA", "#00E5A0", "#00C9A7", "#C77DFF", "#A855F7"];
+const RAMP = ["#FFB829", "#FFD79A", "#FFFFFF", "#D8D8E8", "#B08CFF", "#8052FF", "#4C7DFF", "#15846E"];
 const DEPTH_BANDS = 5; // Far-to-near bands; drive size, alpha and draw order.
 const CAMERA = 3.2; // Perspective distance in shape-space units.
 
 type Vec3 = { x: number; y: number; z: number };
 
-/** Positions plus the surface normal at each one, so relief can be lit. */
-type Cloud = { pos: Vec3[]; nrm: Vec3[] };
+/**
+ * Positions, the surface normal at each one, and a tint.
+ *
+ * Hue and light are separate channels in the reference: a baked colour texture
+ * decides what colour a point is, and the lighting only decides how bright.
+ * That is why its bulb runs a smooth gold-to-teal gradient along its own axis
+ * while its brain puts gold on the fold crests — one lighting model could never
+ * produce both. `tint` is 0..1 into RAMP and belongs to the shape; brightness
+ * still comes from the normal.
+ */
+type Cloud = { pos: Vec3[]; nrm: Vec3[]; tint: number[] };
 
 type Particle = {
   /** One position per shape — index matches SHAPE_NAMES. */
   shapes: Vec3[];
   /** Matching surface normal per shape, so relief catches the light. */
   normals: Vec3[];
+  /** Matching hue per shape, 0..1 into RAMP. */
+  tints: number[];
   size: number;
   spin: number;
   phase: number;
@@ -82,54 +93,47 @@ function fbm(x: number, y: number) {
   return value;
 }
 
-// Side view: frontal lobe left, cerebellum at the lower right, stem below.
+// Brain, seen from the front-three-quarter — a broad rounded mass with a long
+// stem descending from the middle of its underside. Earlier passes drew a
+// lateral profile with the cerebellum bulging at the lower right; that is a
+// different view of a brain and no amount of surface detail was going to make
+// it match.
 //
 // The silhouette is a HEIGHT MAP: white at the crown of a gyrus, dark at the
-// floor of a sulcus, which the sampler turns into displacement along z.
-//
-// The folds are GENERATED, not drawn. Hand-placing a dozen curves gives a
-// decorated outline — a real cortex is a densely packed field of meandering
-// ridges, and no reasonable number of hand-authored strokes reproduces that.
-// A sine field through domain-warped noise does: the sine makes parallel
-// bands, the warp makes them wander and fold back on themselves, which is
-// exactly the behaviour of cortical folding. The cerebellum gets its own much
-// finer, far less warped field, because its folia really are near-parallel.
+// floor of a sulcus, which the sampler turns into displacement along z. The
+// folds are generated rather than drawn — a sine field through domain-warped
+// noise — but at a low base frequency, because the reference's gyri are a
+// handful of large sweeping lobes, not fine texture.
 function drawBrain(ctx: CanvasRenderingContext2D, w: number, h: number) {
   const x = (v: number) => v * w;
   const y = (v: number) => v * h;
 
   ctx.fillStyle = "#fff";
 
-  // Cerebrum.
+  // Cerebral mass.
   ctx.beginPath();
-  ctx.moveTo(x(0.07), y(0.50));
-  ctx.bezierCurveTo(x(0.04), y(0.27), x(0.20), y(0.07), x(0.44), y(0.07));
-  ctx.bezierCurveTo(x(0.68), y(0.01), x(0.92), y(0.13), x(0.93), y(0.35));
-  ctx.bezierCurveTo(x(0.97), y(0.50), x(0.88), y(0.59), x(0.76), y(0.61));
-  ctx.bezierCurveTo(x(0.71), y(0.72), x(0.56), y(0.80), x(0.40), y(0.78));
-  ctx.bezierCurveTo(x(0.21), y(0.79), x(0.08), y(0.68), x(0.07), y(0.50));
+  ctx.moveTo(x(0.03), y(0.42));
+  ctx.bezierCurveTo(x(0.05), y(0.18), x(0.22), y(0.04), x(0.45), y(0.03));
+  ctx.bezierCurveTo(x(0.68), y(0.01), x(0.93), y(0.12), x(0.96), y(0.32));
+  ctx.bezierCurveTo(x(0.99), y(0.47), x(0.95), y(0.60), x(0.86), y(0.66));
+  ctx.bezierCurveTo(x(0.79), y(0.72), x(0.66), y(0.75), x(0.55), y(0.74));
+  ctx.bezierCurveTo(x(0.42), y(0.76), x(0.26), y(0.74), x(0.16), y(0.66));
+  ctx.bezierCurveTo(x(0.07), y(0.60), x(0.02), y(0.52), x(0.03), y(0.42));
   ctx.closePath();
   ctx.fill();
 
-  // Cerebellum.
+  // Stem, dropping from the middle of the underside.
   ctx.beginPath();
-  ctx.ellipse(x(0.79), y(0.70), x(0.16), y(0.13), 0, 0, Math.PI * 2);
-  ctx.fill();
-
-  // Brain stem.
-  ctx.beginPath();
-  ctx.moveTo(x(0.56), y(0.72));
-  ctx.bezierCurveTo(x(0.60), y(0.88), x(0.56), y(0.98), x(0.47), y(0.99));
-  ctx.bezierCurveTo(x(0.43), y(0.90), x(0.46), y(0.78), x(0.48), y(0.71));
+  ctx.moveTo(x(0.500), y(0.68));
+  ctx.lineTo(x(0.585), y(0.68));
+  ctx.bezierCurveTo(x(0.583), y(0.84), x(0.578), y(0.94), x(0.570), y(1.0));
+  ctx.lineTo(x(0.508), y(1.0));
+  ctx.bezierCurveTo(x(0.503), y(0.94), x(0.500), y(0.84), x(0.500), y(0.68));
   ctx.closePath();
   ctx.fill();
 
-  // Paint the fold field into the luminance channels, keeping the silhouette's
-  // own alpha so the shape is untouched.
   const img = ctx.getImageData(0, 0, w, h);
   const px = img.data;
-  const cerebellum = (u: number, v: number) =>
-    Math.hypot((u - 0.79) / 0.17, (v - 0.70) / 0.14) < 1;
 
   for (let j = 0; j < h; j++) {
     for (let i = 0; i < w; i++) {
@@ -138,25 +142,12 @@ function drawBrain(ctx: CanvasRenderingContext2D, w: number, h: number) {
       const u = i / w;
       const v = j / h;
 
-      let height: number;
-      if (cerebellum(u, v)) {
-        // Folia: fine, tightly spaced, only gently warped.
-        const warp = 0.35 * fbm(u * 9, v * 9);
-        height = Math.abs(Math.sin((v * 78 + u * 10) + warp * 6));
-        height = 0.30 + 0.70 * Math.pow(height, 0.6);
-      } else {
-        // Cortex: broad bands dragged around by two octaves of warping until
-        // they meander and double back the way real gyri do.
-        // Tuned by rendering the field on its own and reading it back: at low
-        // warp the sine survives as regular diagonal stripes, which is what the
-        // first attempt looked like. The warp has to dominate the base
-        // frequency before the bands meander, fold back and branch the way
-        // gyri do.
-        const wx = u * 13 + 11 * fbm(u * 3.2, v * 3.2);
-        const wy = v * 13 + 11 * fbm(u * 3.2 + 11.3, v * 3.2 + 7.7);
-        const ridge = Math.abs(Math.sin(wx * 0.85 + wy * 0.55));
-        height = 0.18 + 0.82 * Math.pow(ridge, 0.55);
-      }
+      // Low base frequency, heavy warp: a few large lobes that wander and fold
+      // back, matching the scale of the reference's gyri.
+      const wx = u * 7.5 + 8 * fbm(u * 2.0, v * 2.0);
+      const wy = v * 7.5 + 8 * fbm(u * 2.0 + 11.3, v * 2.0 + 7.7);
+      const ridge = Math.abs(Math.sin(wx * 0.85 + wy * 0.55));
+      const height = 0.14 + 0.86 * Math.pow(ridge, 0.5);
 
       const level = Math.round(Math.max(0, Math.min(1, height)) * 255);
       px[o] = level;
@@ -166,73 +157,45 @@ function drawBrain(ctx: CanvasRenderingContext2D, w: number, h: number) {
   }
   ctx.putImageData(img, 0, 0);
 
-  // The few grooves deep enough to be landmarks are still placed by hand, on
-  // top of the generated field — anatomy, not texture.
+  // The longitudinal fissure between the hemispheres, the one landmark this
+  // view really needs.
   const hasBlur = "filter" in ctx;
-  if (hasBlur) ctx.filter = `blur(${Math.max(1.5, w * 0.009)}px)`;
+  if (hasBlur) ctx.filter = `blur(${Math.max(1.5, w * 0.010)}px)`;
   ctx.globalCompositeOperation = "source-atop";
   ctx.lineCap = "round";
-  ctx.lineJoin = "round";
-
-  const sulcus = (depth: number, width: number, pts: number[][]) => {
-    ctx.strokeStyle = `rgb(${depth},${depth},${depth})`;
-    ctx.lineWidth = Math.max(2, w * width);
-    ctx.beginPath();
-    ctx.moveTo(x(pts[0][0]), y(pts[0][1]));
-    for (let i = 1; i < pts.length - 1; i++) {
-      const midX = (pts[i][0] + pts[i + 1][0]) / 2;
-      const midY = (pts[i][1] + pts[i + 1][1]) / 2;
-      ctx.quadraticCurveTo(x(pts[i][0]), y(pts[i][1]), x(midX), y(midY));
-    }
-    ctx.stroke();
-  };
-
-  // Lateral (Sylvian) fissure.
-  sulcus(10, 0.032, [[0.13, 0.55], [0.27, 0.61], [0.43, 0.59], [0.57, 0.51], [0.67, 0.47]]);
-  // Central sulcus.
-  sulcus(20, 0.024, [[0.53, 0.09], [0.49, 0.24], [0.44, 0.38], [0.38, 0.50], [0.34, 0.58]]);
-  // Cerebrum/cerebellum cleft.
-  sulcus(8, 0.028, [[0.61, 0.63], [0.72, 0.58], [0.84, 0.60], [0.96, 0.63]]);
-
+  ctx.strokeStyle = "rgb(8,8,8)";
+  ctx.lineWidth = Math.max(3, w * 0.022);
+  ctx.beginPath();
+  ctx.moveTo(x(0.50), y(0.03));
+  ctx.bezierCurveTo(x(0.53), y(0.22), x(0.50), y(0.44), x(0.53), y(0.68));
+  ctx.stroke();
   if (hasBlur) ctx.filter = "none";
   ctx.globalCompositeOperation = "source-over";
 }
 
-// Lightbulb, drawn as one continuous outline rather than stacked primitives:
-// an A19 envelope is a pear, not an ellipse sitting on a cone, and the join
-// between glass and neck is a smooth shoulder. The relief — a lit dome on the
-// glass, a helical thread on the base — is written into the luminance channels
-// the same way the brain's folds are, so the sampler displaces it along z.
+// Lightbulb: a smooth teardrop, tilted, and nothing else. The reference's bulb
+// carries no thread, no filament and no collar — the previous pass added all
+// three and they were the reason it never matched. Its whole character is the
+// gradient running along the long axis, which the tint channel supplies.
 function drawBulb(ctx: CanvasRenderingContext2D, w: number, h: number) {
   const x = (v: number) => v * w;
   const y = (v: number) => v * h;
 
   ctx.fillStyle = "#fff";
-
-  // Envelope: crown, shoulders, then the waist drawn in to the neck.
   ctx.beginPath();
-  ctx.moveTo(x(0.50), y(0.05));
-  ctx.bezierCurveTo(x(0.78), y(0.05), x(0.92), y(0.22), x(0.90), y(0.38));
-  ctx.bezierCurveTo(x(0.89), y(0.48), x(0.80), y(0.53), x(0.72), y(0.58));
-  ctx.bezierCurveTo(x(0.66), y(0.62), x(0.63), y(0.64), x(0.63), y(0.68));
-  ctx.lineTo(x(0.37), y(0.68));
-  ctx.bezierCurveTo(x(0.37), y(0.64), x(0.34), y(0.62), x(0.28), y(0.58));
-  ctx.bezierCurveTo(x(0.20), y(0.53), x(0.11), y(0.48), x(0.10), y(0.38));
-  ctx.bezierCurveTo(x(0.08), y(0.22), x(0.22), y(0.05), x(0.50), y(0.05));
+  // Round head at the upper left, narrowing along a smooth waist into a
+  // rounded base at the lower right.
+  ctx.moveTo(x(0.40), y(0.06));
+  ctx.bezierCurveTo(x(0.68), y(0.06), x(0.86), y(0.24), x(0.84), y(0.44));
+  ctx.bezierCurveTo(x(0.82), y(0.60), x(0.74), y(0.66), x(0.76), y(0.78));
+  ctx.bezierCurveTo(x(0.78), y(0.92), x(0.68), y(0.99), x(0.55), y(0.98));
+  ctx.bezierCurveTo(x(0.43), y(0.97), x(0.37), y(0.88), x(0.38), y(0.76));
+  ctx.bezierCurveTo(x(0.39), y(0.64), x(0.30), y(0.60), x(0.22), y(0.52));
+  ctx.bezierCurveTo(x(0.10), y(0.40), x(0.14), y(0.10), x(0.40), y(0.06));
   ctx.closePath();
   ctx.fill();
 
-  // Screw base: collar, threaded barrel, contact tip.
-  ctx.beginPath();
-  ctx.moveTo(x(0.37), y(0.68));
-  ctx.lineTo(x(0.63), y(0.68));
-  ctx.lineTo(x(0.62), y(0.88));
-  ctx.bezierCurveTo(x(0.61), y(0.94), x(0.57), y(0.97), x(0.50), y(0.97));
-  ctx.bezierCurveTo(x(0.43), y(0.97), x(0.39), y(0.94), x(0.38), y(0.88));
-  ctx.closePath();
-  ctx.fill();
-
-  // Relief into the luminance channels.
+  // A single soft dome so the body has volume. No surface detail at all.
   const img = ctx.getImageData(0, 0, w, h);
   const px = img.data;
   for (let j = 0; j < h; j++) {
@@ -241,57 +204,14 @@ function drawBulb(ctx: CanvasRenderingContext2D, w: number, h: number) {
       if (px[o + 3] < 128) continue;
       const u = i / w;
       const v = j / h;
-
-      let height: number;
-      if (v > 0.68) {
-        // Helical thread: a sine in v skewed by u, so the ridge climbs across
-        // the barrel instead of ringing it in flat bands.
-        const helix = Math.sin((v - 0.68) * 108 + (u - 0.5) * 7);
-        height = 0.34 + 0.66 * (0.5 + 0.5 * helix);
-      } else {
-        // Glass: a dome, brightest where the envelope bulges towards the
-        // viewer and falling away towards the silhouette.
-        const dome = Math.max(0, 1 - Math.hypot((u - 0.5) / 0.42, (v - 0.34) / 0.34));
-        height = 0.42 + 0.58 * Math.sqrt(dome);
-      }
-
-      const level = Math.round(Math.max(0, Math.min(1, height)) * 255);
+      const dome = Math.max(0, 1 - Math.hypot((u - 0.5) / 0.46, (v - 0.5) / 0.5));
+      const level = Math.round((0.45 + 0.55 * Math.sqrt(dome)) * 255);
       px[o] = level;
       px[o + 1] = level;
       px[o + 2] = level;
     }
   }
   ctx.putImageData(img, 0, 0);
-
-  const hasBlur = "filter" in ctx;
-  if (hasBlur) ctx.filter = `blur(${Math.max(1, w * 0.005)}px)`;
-  ctx.globalCompositeOperation = "source-atop";
-  ctx.lineCap = "round";
-
-  // The collar between glass and base, and the seam at the contact tip.
-  ctx.strokeStyle = "rgb(14,14,14)";
-  ctx.lineWidth = Math.max(2, w * 0.020);
-  ctx.beginPath();
-  ctx.moveTo(x(0.37), y(0.685));
-  ctx.lineTo(x(0.63), y(0.685));
-  ctx.stroke();
-
-  // Filament: stem posts and the coiled loop between them, carried as a bright
-  // ridge so it stands proud inside the glass rather than punching a hole.
-  ctx.strokeStyle = "rgb(255,255,255)";
-  ctx.lineWidth = Math.max(2, w * 0.016);
-  ctx.beginPath();
-  ctx.moveTo(x(0.44), y(0.60));
-  ctx.lineTo(x(0.44), y(0.40));
-  ctx.lineTo(x(0.47), y(0.30));
-  ctx.lineTo(x(0.50), y(0.38));
-  ctx.lineTo(x(0.53), y(0.30));
-  ctx.lineTo(x(0.56), y(0.40));
-  ctx.lineTo(x(0.56), y(0.60));
-  ctx.stroke();
-
-  if (hasBlur) ctx.filter = "none";
-  ctx.globalCompositeOperation = "source-over";
 }
 
 // --------------------------------------------------------------- point clouds
@@ -310,7 +230,9 @@ function sampleSilhouette(
   draw: (ctx: CanvasRenderingContext2D, w: number, h: number) => void,
   count: number,
   aspect: number,
-  thickness: number
+  thickness: number,
+  /** Hue for this point, 0..1 into RAMP. Owned by the shape, not the light. */
+  tintOf: (u: number, v: number, height: number) => number
 ): Cloud {
   const mw = 320;
   const mh = Math.max(1, Math.round(mw / aspect));
@@ -353,6 +275,7 @@ function sampleSilhouette(
 
   const pos: Vec3[] = [];
   const nrm: Vec3[] = [];
+  const tint: number[] = [];
   const probe = 2;
 
   walk(spacing, (px, py, gx, gy) => {
@@ -392,6 +315,7 @@ function sampleSilhouette(
     let vz = (z / rl) * 0.55 + bz * 0.45;
     const vl = Math.hypot(vx, vy, vz) || 1;
     nrm.push({ x: vx / vl, y: vy / vl, z: vz / vl });
+    tint.push(Math.max(0, Math.min(1, tintOf(px / mw, py / mh, height(px, py)))));
   });
 
   if (pos.length === 0) return flatCloud(count);
@@ -400,13 +324,14 @@ function sampleSilhouette(
   for (let i = sampled; i < count; i++) {
     pos.push(pos[i % sampled]);
     nrm.push(nrm[i % sampled]);
+    tint.push(tint[i % sampled]);
   }
-  return { pos: pos.slice(0, count), nrm: nrm.slice(0, count) };
+  return { pos: pos.slice(0, count), nrm: nrm.slice(0, count), tint: tint.slice(0, count) };
 }
 
 function flatCloud(count: number): Cloud {
   const zero = Array.from({ length: count }, () => ({ x: 0, y: 0, z: 0 }));
-  return { pos: zero, nrm: zero.map(() => ({ x: 0, y: 0, z: 1 })) };
+  return { pos: zero, nrm: zero.map(() => ({ x: 0, y: 0, z: 1 })), tint: zero.map(() => 0.5) };
 }
 
 /**
@@ -433,13 +358,21 @@ function sampleSphere(count: number, radius: number): Cloud {
   const sampled = out.length;
   for (let i = sampled; i < count; i++) out.push(out[i % sampled]);
   const pos = out.slice(0, count);
-  return { pos, nrm: pos.map((p) => ({ x: p.x / radius, y: p.y / radius, z: p.z / radius })) };
+  return {
+    pos,
+    nrm: pos.map((p) => ({ x: p.x / radius, y: p.y / radius, z: p.z / radius })),
+    tint: pos.map((p) => {
+      const patch = fbm(p.x * 2.2 + 3.1, p.y * 2.2 + p.z * 1.4);
+      return Math.min(1, Math.max(0, Math.round(patch * 7) / 7));
+    }),
+  };
 }
 
 /** Loose ball of points — the dispersed state between the solid shapes. */
 function sampleScatter(count: number, radius: number, rand: () => number): Cloud {
   const pos: Vec3[] = [];
   const nrm: Vec3[] = [];
+  const tint: number[] = [];
   for (let i = 0; i < count; i++) {
     const u = rand() * 2 - 1;
     const theta = rand() * Math.PI * 2;
@@ -451,8 +384,9 @@ function sampleScatter(count: number, radius: number, rand: () => number): Cloud
     pos.push({ x, y, z });
     const l = Math.hypot(x, y, z) || 1;
     nrm.push({ x: x / l, y: y / l, z: z / l });
+    tint.push(rand());
   }
-  return { pos, nrm };
+  return { pos, nrm, tint };
 }
 
 // Shape order; a section names one of these in `data-shape`.
@@ -524,9 +458,17 @@ export default function Constellation() {
       const rand = mulberry32(20260817);
 
       const clouds: Cloud[] = [
-        sampleSilhouette(drawBrain, count, 1.3, 0.42),
+        // Gold rides the crest of every fold, white fills the faces between
+        // them, violet sinks into the valleys — the reference's brain read.
+        sampleSilhouette(drawBrain, count, 1.1, 0.40, (_u, _v, height) =>
+          height > 0.86 ? 0.02 : height > 0.55 ? 0.24 + (1 - height) * 0.4 : 0.62 + (0.55 - height) * 0.5
+        ),
         sampleSphere(count, 1),
-        sampleSilhouette(drawBulb, count, 0.66, 0.36),
+        // One smooth sweep down the bulb's long axis: gold at the head,
+        // through white, into violet, blue and teal at the base.
+        sampleSilhouette(drawBulb, count, 0.66, 0.38, (u, v) =>
+          Math.min(1, Math.max(0, (u * 0.45 + v * 0.85 - 0.10) / 0.95))
+        ),
         sampleScatter(count, 1.5, rand),
       ];
 
@@ -535,6 +477,7 @@ export default function Constellation() {
         next.push({
           shapes: clouds.map((c) => c.pos[i]),
           normals: clouds.map((c) => c.nrm[i]),
+          tints: clouds.map((c) => c.tint[i]),
           size: 2.1,
           spin: rand() * Math.PI * 2,
           phase: rand() * Math.PI * 2,
@@ -663,10 +606,17 @@ export default function Constellation() {
         const nrzz = my * sinX + nrz * cosX;
         const len = Math.hypot(nrx, nry, nrzz) || 1;
         const lit = (nrx * LX + nry * LY + nrzz * LZ) / len;
+
+        // Hue belongs to the shape, brightness to the light — the two channels
+        // the reference keeps separate.
+        const ta = particle.tints[from];
+        const tb = particle.tints[to];
+        const hue = ta + (tb - ta) * blend;
         const step = Math.min(
           RAMP.length - 1,
-          Math.max(0, Math.round((1 - (lit + 1) / 2) * (RAMP.length - 1)) + particle.tint)
+          Math.max(0, Math.round(hue * (RAMP.length - 1)) + particle.tint)
         );
+        const shade = 0.55 + 0.45 * ((lit + 1) / 2);
 
         // Perspective: nearer points are larger and spread further apart.
         const depth = CAMERA / (CAMERA + rzz);
@@ -679,7 +629,12 @@ export default function Constellation() {
         const cr = Math.cos(rot);
         const sr = Math.sin(rot);
 
-        const band = Math.min(DEPTH_BANDS - 1, Math.max(0, Math.floor(((depth - 0.65) / 0.75) * DEPTH_BANDS)));
+        // Fold the lighting into the depth band so brightness still varies
+        // with it while the draw-call count stays fixed.
+        const band = Math.min(
+          DEPTH_BANDS - 1,
+          Math.max(0, Math.floor(((depth - 0.65) / 0.75) * DEPTH_BANDS * 0.6 + shade * DEPTH_BANDS * 0.4))
+        );
         const path = paths[step * DEPTH_BANDS + band];
         path.moveTo(cx + size * sr, cy - size * cr);
         path.lineTo(cx + (size * 0.87 * cr - size * 0.5 * sr), cy + (size * 0.87 * sr + size * 0.5 * cr));
