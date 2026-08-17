@@ -18,13 +18,11 @@ import { useEffect, useRef } from "react";
 //   - particles are batched by colour and depth band, so a frame issues a few
 //     dozen stroke() calls instead of one per triangle
 
-// The reference does not colour particles at random — colour tracks how the
-// surface faces a light coming from the upper left: gold along the lit rim,
-// white where the surface faces the viewer, violet and blue falling away into
-// shadow. Random colour per particle is exactly what makes a particle field
-// read as confetti instead of as a lit object.
-const RAMP = ["#FFB829", "#FFD98A", "#FFFFFF", "#DCD6F5", "#B08CFF", "#8052FF", "#4C7DFF", "#15846E"];
-
+// Colour is not assigned at random — it tracks how the surface faces a light
+// coming from the upper left, which is what makes a cloud of triangles read as
+// a lit object rather than confetti. The reference runs gold through white to
+// violet; this is the same construction in vibrant pink, green and purple.
+const RAMP = ["#FF2D92", "#FF7ABF", "#FFFFFF", "#8CFFDA", "#00E5A0", "#00C9A7", "#C77DFF", "#A855F7"];
 const DEPTH_BANDS = 5; // Far-to-near bands; drive size, alpha and draw order.
 const CAMERA = 3.2; // Perspective distance in shape-space units.
 
@@ -163,84 +161,100 @@ function drawBulb(ctx: CanvasRenderingContext2D, w: number, h: number) {
 
 // --------------------------------------------------------------- point clouds
 
-/** Rejection-samples `count` points from a silhouette, then gives them volume. */
+/**
+ * Walks a regular grid across the silhouette and keeps the cells that land
+ * inside it.
+ *
+ * Rejection sampling was the obvious choice and the wrong one: scattering
+ * points at random produces visual noise, whereas the reference's particles sit
+ * on a lattice that follows the surface. Those rows are most of why its shapes
+ * read as crisp objects — the eye picks up the ordered structure long before it
+ * resolves any single triangle.
+ */
 function sampleSilhouette(
   draw: (ctx: CanvasRenderingContext2D, w: number, h: number) => void,
   count: number,
   aspect: number,
-  thickness: number,
-  rand: () => number
+  thickness: number
 ): Vec3[] {
-  const mw = 260;
+  const mw = 320;
   const mh = Math.max(1, Math.round(mw / aspect));
   const mask = document.createElement("canvas");
   mask.width = mw;
   mask.height = mh;
   const mctx = mask.getContext("2d", { willReadFrequently: true });
-  if (!mctx) return [];
+  if (!mctx) return Array.from({ length: count }, () => ({ x: 0, y: 0, z: 0 }));
   draw(mctx, mw, mh);
   const data = mctx.getImageData(0, 0, mw, mh).data;
 
-  const inside = (px: number, py: number) => {
-    if (px < 0 || py < 0 || px >= mw || py >= mh) return false;
-    return data[((py | 0) * mw + (px | 0)) * 4 + 3] >= 128;
+  const inside = (px: number, py: number) =>
+    px >= 0 && py >= 0 && px < mw && py < mh && data[((py | 0) * mw + (px | 0)) * 4 + 3] >= 128;
+
+  const walk = (spacing: number, collect: ((px: number, py: number, gx: number, gy: number) => void) | null) => {
+    let hits = 0;
+    let gy = 0;
+    for (let py = spacing / 2; py < mh; py += spacing, gy++) {
+      let gx = 0;
+      for (let px = spacing / 2; px < mw; px += spacing, gx++) {
+        if (!inside(px, py)) continue;
+        hits++;
+        collect?.(px, py, gx, gy);
+      }
+    }
+    return hits;
   };
 
-  // How close a point is to any edge of the silhouette — its own outline and
-  // the channels carved into it. Sampling uniformly across the filled area
-  // buries that structure under interior noise: the brain's folds and the
-  // bulb's outline only read once points concentrate on the edges, which is
-  // what makes the reference's shapes legible at a glance.
-  const PROBE = Math.max(3, Math.round(mw * 0.028));
-  const edgeness = (px: number, py: number) => {
-    let outside = 0;
-    for (let a = 0; a < 8; a++) {
-      const angle = (a / 8) * Math.PI * 2;
-      if (!inside(px + Math.cos(angle) * PROBE, py + Math.sin(angle) * PROBE)) outside++;
-    }
-    return outside / 8;
-  };
+  // Calibrate the spacing in one corrective pass: the fraction of the mask the
+  // silhouette covers isn't known up front and differs a lot between a filled
+  // brain and a thin-walled bulb.
+  let spacing = Math.sqrt((mw * mh) / count);
+  const first = walk(spacing, null);
+  if (first > 0) spacing = Math.max(1.5, spacing * Math.sqrt(first / count));
 
   const out: Vec3[] = [];
-  let guard = 0;
-  while (out.length < count && guard < count * 120) {
-    guard++;
-    const px = rand() * mw;
-    const py = rand() * mh;
-    if (data[(Math.floor(py) * mw + Math.floor(px)) * 4 + 3] < 128) continue;
-    // Interior points still appear, just sparsely, so the shape keeps volume.
-    if (rand() > 0.45 + 0.55 * edgeness(px, py)) continue;
-    // Normalised so the longer axis spans [-1, 1].
+  walk(spacing, (px, py, gx, gy) => {
     const nx = (px / mw - 0.5) * 2;
     const ny = ((py / mh - 0.5) * 2) / aspect;
-    // Lens-shaped thickness: full depth mid-shape, tapering towards the
-    // silhouette edge, so a rotated cloud has believable volume rather than
-    // being a flat slab seen edge-on.
+    // Lens-shaped thickness, tapering towards the silhouette edge. The sign
+    // alternates on a checkerboard so the grid describes a front and a back
+    // shell rather than one flat slab — that is what gives the lattice depth
+    // when the cloud turns.
     const edge = Math.max(0, 1 - Math.hypot(nx, ny * aspect));
-    const z = (rand() * 2 - 1) * thickness * Math.sqrt(edge);
+    const z = ((gx + gy) % 2 === 0 ? 1 : -1) * thickness * Math.sqrt(edge);
     out.push({ x: nx, y: ny, z });
+  });
+
+  if (out.length === 0) return Array.from({ length: count }, () => ({ x: 0, y: 0, z: 0 }));
+  // Every cloud must be the same length for the morph to stay a straight lerp.
+  const sampled = out.length;
+  for (let i = sampled; i < count; i++) out.push(out[i % sampled]);
+  return out.slice(0, count);
+}
+
+/**
+ * Latitude/longitude grid rather than a Fibonacci spiral. The spiral spreads
+ * points more evenly, but the reference's globe is visibly ruled into rows, and
+ * those rows are the point.
+ */
+function sampleSphere(count: number, radius: number): Vec3[] {
+  const rows = Math.max(2, Math.round(Math.sqrt(count / 2)));
+  const out: Vec3[] = [];
+  for (let r = 0; r < rows; r++) {
+    const phi = ((r + 0.5) / rows) * Math.PI;
+    const y = Math.cos(phi);
+    const ring = Math.sin(phi);
+    // Ring circumference shrinks towards the poles; scale the column count with
+    // it so spacing stays even instead of bunching up at the top and bottom.
+    const cols = Math.max(3, Math.round(rows * 2 * ring));
+    for (let c = 0; c < cols; c++) {
+      const theta = (c / cols) * Math.PI * 2;
+      out.push({ x: Math.cos(theta) * ring * radius, y: y * radius, z: Math.sin(theta) * ring * radius });
+    }
   }
-  // Rejection sampling can fall short on a thin silhouette. Every cloud must be
-  // the same length for the morph to stay a straight lerp, so pad by cycling
-  // through what was sampled rather than repeating a single point (which would
-  // stack the whole remainder on one spot).
   if (out.length === 0) return Array.from({ length: count }, () => ({ x: 0, y: 0, z: 0 }));
   const sampled = out.length;
   for (let i = sampled; i < count; i++) out.push(out[i % sampled]);
-  return out;
-}
-
-/** Fibonacci sphere — even coverage, no polar clustering. */
-function sampleSphere(count: number, radius: number): Vec3[] {
-  const out: Vec3[] = [];
-  const golden = Math.PI * (3 - Math.sqrt(5));
-  for (let i = 0; i < count; i++) {
-    const y = count > 1 ? 1 - (i / (count - 1)) * 2 : 0;
-    const r = Math.sqrt(Math.max(0, 1 - y * y));
-    const theta = golden * i;
-    out.push({ x: Math.cos(theta) * r * radius, y: y * radius, z: Math.sin(theta) * r * radius });
-  }
-  return out;
+  return out.slice(0, count);
 }
 
 /** Loose ball of points — the dispersed state between the solid shapes. */
@@ -309,7 +323,7 @@ export default function Constellation() {
       canvas!.style.height = `${h}px`;
       ctx!.setTransform(dpr, 0, 0, dpr, 0, 0);
 
-      baseScale = Math.min(w * (w >= 900 ? 0.33 : 0.46), h * 0.44);
+      baseScale = Math.min(w * (w >= 900 ? 0.34 : 0.46), h * 0.46);
       slots = Array.from(document.querySelectorAll<HTMLElement>("[data-orb]"));
       return Math.round(Math.min(5600, (w * h) / 280));
     }
@@ -325,9 +339,9 @@ export default function Constellation() {
       const rand = mulberry32(20260817);
 
       const clouds: Vec3[][] = [
-        sampleSilhouette(drawBrain, count, 1.3, 0.42, rand),
+        sampleSilhouette(drawBrain, count, 1.3, 0.42),
         sampleSphere(count, 1),
-        sampleSilhouette(drawBulb, count, 0.62, 0.34, rand),
+        sampleSilhouette(drawBulb, count, 0.62, 0.34),
         sampleScatter(count, 1.5, rand),
       ];
 
@@ -335,7 +349,7 @@ export default function Constellation() {
       for (let i = 0; i < count; i++) {
         next.push({
           shapes: clouds.map((c) => c[i]),
-          size: 1.3 + rand() * 1.7,
+          size: 2.1,
           spin: rand() * Math.PI * 2,
           phase: rand() * Math.PI * 2,
           tint: Math.round(rand() * 2) - 1,
@@ -350,7 +364,7 @@ export default function Constellation() {
         spin: rand() * Math.PI * 2,
         drift: 0.4 + rand() * 1.2,
         color: RAMP[Math.floor(rand() * 5)],
-        alpha: 0.06 + rand() * 0.14,
+        alpha: 0.10 + rand() * 0.16,
       }));
     }
 
@@ -378,7 +392,7 @@ export default function Constellation() {
       if (!best) return { x: w * 0.5, y: h * 0.5, scale: baseScale * 1.15, alpha: 0.12, shape: view.shape };
 
       const rect = best.getBoundingClientRect();
-      const side = best.dataset.orb === "left" ? 0.30 : 0.70;
+      const side = best.dataset.orb === "left" ? 0.31 : 0.69;
       const shape = Math.max(0, SHAPE_NAMES.indexOf(best.dataset.shape ?? "brain"));
       return {
         // Below the two-column breakpoint there is no free half, so the field
@@ -477,19 +491,31 @@ export default function Constellation() {
         path.closePath();
       }
 
-      c.lineWidth = 1;
       // Furthest band first so nearer, brighter particles land on top.
       for (let band = 0; band < DEPTH_BANDS; band++) {
-        c.globalAlpha = (0.28 + (band / (DEPTH_BANDS - 1)) * 0.62) * view.alpha;
+        const near = band >= DEPTH_BANDS - 2;
+        c.globalAlpha = (0.5 + (band / (DEPTH_BANDS - 1)) * 0.5) * view.alpha;
         for (let step = 0; step < RAMP.length; step++) {
+          const path = paths[step * DEPTH_BANDS + band];
           c.strokeStyle = RAMP[step];
-          c.stroke(paths[step * DEPTH_BANDS + band]);
+          if (near) {
+            // A wide, faint pass under a crisp one — a bloom for two stroke()
+            // calls instead of shadowBlur, which would cost a full-canvas
+            // blur every frame.
+            c.lineWidth = 3;
+            c.globalAlpha = 0.14 * view.alpha;
+            c.stroke(path);
+            c.globalAlpha = (0.5 + (band / (DEPTH_BANDS - 1)) * 0.5) * view.alpha;
+          }
+          c.lineWidth = 1;
+          c.stroke(path);
         }
       }
 
-      // Foreground glyphs: a handful of large outlined triangles drifting in
-      // front of the field, the decorative layer the reference floats over its
-      // hero art.
+      // Foreground glyphs. The particles are tetrahedra, and at large sizes the
+      // reference shows it: the near vertex and its three edges are visible
+      // inside the outline. Drawing these as flat triangles loses the depth cue
+      // that makes them read as objects drifting in front of the field.
       c.lineWidth = 1.5;
       for (const glyph of glyphs) {
         const wobble = reduced ? 0 : Math.sin(t / 4200 + glyph.spin) * 26 * glyph.drift;
@@ -499,13 +525,27 @@ export default function Constellation() {
         const cr = Math.cos(rot);
         const sr = Math.sin(rot);
         const gs = glyph.size;
+
+        const corner = (lx: number, ly: number) => [gx + (lx * cr - ly * sr), gy + (lx * sr + ly * cr)] as const;
+        const a = corner(0, -gs);
+        const b = corner(gs * 0.87, gs * 0.5);
+        const d = corner(-gs * 0.87, gs * 0.5);
+        // The fourth vertex, offset towards the viewer.
+        const apex = corner(gs * 0.22, -gs * 0.1);
+
         c.globalAlpha = glyph.alpha * view.alpha;
         c.strokeStyle = glyph.color;
         c.beginPath();
-        c.moveTo(gx + gs * sr, gy - gs * cr);
-        c.lineTo(gx + (gs * 0.87 * cr - gs * 0.5 * sr), gy + (gs * 0.87 * sr + gs * 0.5 * cr));
-        c.lineTo(gx + (-gs * 0.87 * cr - gs * 0.5 * sr), gy + (-gs * 0.87 * sr + gs * 0.5 * cr));
+        c.moveTo(a[0], a[1]);
+        c.lineTo(b[0], b[1]);
+        c.lineTo(d[0], d[1]);
         c.closePath();
+        c.moveTo(apex[0], apex[1]);
+        c.lineTo(a[0], a[1]);
+        c.moveTo(apex[0], apex[1]);
+        c.lineTo(b[0], b[1]);
+        c.moveTo(apex[0], apex[1]);
+        c.lineTo(d[0], d[1]);
         c.stroke();
       }
 
