@@ -49,15 +49,51 @@ type Glyph = { x: number; y: number; size: number; spin: number; drift: number; 
 
 // ---------------------------------------------------------------- silhouettes
 
+// ------------------------------------------------------------ noise helpers
+
+function hash2(x: number, y: number) {
+  const s = Math.sin(x * 127.1 + y * 311.7) * 43758.5453;
+  return s - Math.floor(s);
+}
+
+function valueNoise(x: number, y: number) {
+  const xi = Math.floor(x);
+  const yi = Math.floor(y);
+  const xf = x - xi;
+  const yf = y - yi;
+  const u = xf * xf * (3 - 2 * xf);
+  const v = yf * yf * (3 - 2 * yf);
+  const a = hash2(xi, yi);
+  const b = hash2(xi + 1, yi);
+  const c = hash2(xi, yi + 1);
+  const d = hash2(xi + 1, yi + 1);
+  return a * (1 - u) * (1 - v) + b * u * (1 - v) + c * (1 - u) * v + d * u * v;
+}
+
+function fbm(x: number, y: number) {
+  let value = 0;
+  let amp = 0.5;
+  let freq = 1;
+  for (let i = 0; i < 4; i++) {
+    value += amp * valueNoise(x * freq, y * freq);
+    freq *= 2;
+    amp *= 0.5;
+  }
+  return value;
+}
+
 // Side view: frontal lobe left, cerebellum at the lower right, stem below.
 //
-// The silhouette is drawn as a HEIGHT MAP, not a flat cut-out. White is the
-// crown of a gyrus, dark grey the floor of a sulcus, and the sampler turns that
-// luminance into displacement along z. Carving the folds out of a flat
-// silhouette — the previous approach — left holes that stayed holes no matter
-// how the cloud turned, because there was no depth behind them. Displacing
-// instead of deleting is what makes the convolutions wrap around the surface
-// and read as an actual brain.
+// The silhouette is a HEIGHT MAP: white at the crown of a gyrus, dark at the
+// floor of a sulcus, which the sampler turns into displacement along z.
+//
+// The folds are GENERATED, not drawn. Hand-placing a dozen curves gives a
+// decorated outline — a real cortex is a densely packed field of meandering
+// ridges, and no reasonable number of hand-authored strokes reproduces that.
+// A sine field through domain-warped noise does: the sine makes parallel
+// bands, the warp makes them wander and fold back on themselves, which is
+// exactly the behaviour of cortical folding. The cerebellum gets its own much
+// finer, far less warped field, because its folia really are near-parallel.
 function drawBrain(ctx: CanvasRenderingContext2D, w: number, h: number) {
   const x = (v: number) => v * w;
   const y = (v: number) => v * h;
@@ -88,11 +124,52 @@ function drawBrain(ctx: CanvasRenderingContext2D, w: number, h: number) {
   ctx.closePath();
   ctx.fill();
 
-  // Sulci, painted as soft dark valleys inside the silhouette. Blurring them
-  // matters: a hard-edged groove quantises into a stair when the grid samples
-  // it, while a soft one gives the shoulder of each gyrus a gradient to sit on.
+  // Paint the fold field into the luminance channels, keeping the silhouette's
+  // own alpha so the shape is untouched.
+  const img = ctx.getImageData(0, 0, w, h);
+  const px = img.data;
+  const cerebellum = (u: number, v: number) =>
+    Math.hypot((u - 0.79) / 0.17, (v - 0.70) / 0.14) < 1;
+
+  for (let j = 0; j < h; j++) {
+    for (let i = 0; i < w; i++) {
+      const o = (j * w + i) * 4;
+      if (px[o + 3] < 128) continue;
+      const u = i / w;
+      const v = j / h;
+
+      let height: number;
+      if (cerebellum(u, v)) {
+        // Folia: fine, tightly spaced, only gently warped.
+        const warp = 0.35 * fbm(u * 9, v * 9);
+        height = Math.abs(Math.sin((v * 78 + u * 10) + warp * 6));
+        height = 0.30 + 0.70 * Math.pow(height, 0.6);
+      } else {
+        // Cortex: broad bands dragged around by two octaves of warping until
+        // they meander and double back the way real gyri do.
+        // Tuned by rendering the field on its own and reading it back: at low
+        // warp the sine survives as regular diagonal stripes, which is what the
+        // first attempt looked like. The warp has to dominate the base
+        // frequency before the bands meander, fold back and branch the way
+        // gyri do.
+        const wx = u * 13 + 11 * fbm(u * 3.2, v * 3.2);
+        const wy = v * 13 + 11 * fbm(u * 3.2 + 11.3, v * 3.2 + 7.7);
+        const ridge = Math.abs(Math.sin(wx * 0.85 + wy * 0.55));
+        height = 0.18 + 0.82 * Math.pow(ridge, 0.55);
+      }
+
+      const level = Math.round(Math.max(0, Math.min(1, height)) * 255);
+      px[o] = level;
+      px[o + 1] = level;
+      px[o + 2] = level;
+    }
+  }
+  ctx.putImageData(img, 0, 0);
+
+  // The few grooves deep enough to be landmarks are still placed by hand, on
+  // top of the generated field — anatomy, not texture.
   const hasBlur = "filter" in ctx;
-  if (hasBlur) ctx.filter = `blur(${Math.max(1.5, w * 0.008)}px)`;
+  if (hasBlur) ctx.filter = `blur(${Math.max(1.5, w * 0.009)}px)`;
   ctx.globalCompositeOperation = "source-atop";
   ctx.lineCap = "round";
   ctx.lineJoin = "round";
@@ -110,84 +187,110 @@ function drawBrain(ctx: CanvasRenderingContext2D, w: number, h: number) {
     ctx.stroke();
   };
 
-  // Lateral (Sylvian) fissure — the deepest and most recognisable groove.
-  sulcus(18, 0.030, [[0.14, 0.55], [0.28, 0.60], [0.44, 0.58], [0.58, 0.50], [0.68, 0.46]]);
-  // Central sulcus, running down from the crown.
-  sulcus(28, 0.024, [[0.52, 0.10], [0.48, 0.24], [0.44, 0.38], [0.38, 0.50], [0.34, 0.58]]);
-  // Secondary sulci across the lobes.
-  sulcus(48, 0.020, [[0.12, 0.40], [0.22, 0.30], [0.32, 0.36], [0.40, 0.26], [0.48, 0.30]]);
-  sulcus(48, 0.020, [[0.16, 0.68], [0.28, 0.70], [0.40, 0.68], [0.50, 0.64], [0.58, 0.62]]);
-  sulcus(52, 0.018, [[0.30, 0.14], [0.40, 0.20], [0.50, 0.15], [0.60, 0.20], [0.70, 0.16]]);
-  sulcus(52, 0.018, [[0.60, 0.28], [0.70, 0.22], [0.80, 0.30], [0.88, 0.26]]);
-  sulcus(52, 0.018, [[0.62, 0.40], [0.72, 0.36], [0.82, 0.44], [0.90, 0.40]]);
-  sulcus(56, 0.016, [[0.20, 0.22], [0.26, 0.16], [0.32, 0.24]]);
-  sulcus(56, 0.016, [[0.44, 0.44], [0.54, 0.40], [0.62, 0.46]]);
-  sulcus(56, 0.016, [[0.10, 0.52], [0.16, 0.46], [0.22, 0.52]]);
-
-  // The cleft between cerebrum and cerebellum.
-  sulcus(14, 0.026, [[0.62, 0.63], [0.72, 0.58], [0.84, 0.60], [0.95, 0.63]]);
-  // Cerebellum's own fine horizontal striations.
-  sulcus(40, 0.012, [[0.66, 0.66], [0.78, 0.64], [0.92, 0.66]]);
-  sulcus(40, 0.012, [[0.66, 0.72], [0.78, 0.70], [0.92, 0.72]]);
-  sulcus(40, 0.012, [[0.68, 0.78], [0.79, 0.76], [0.90, 0.78]]);
+  // Lateral (Sylvian) fissure.
+  sulcus(10, 0.032, [[0.13, 0.55], [0.27, 0.61], [0.43, 0.59], [0.57, 0.51], [0.67, 0.47]]);
+  // Central sulcus.
+  sulcus(20, 0.024, [[0.53, 0.09], [0.49, 0.24], [0.44, 0.38], [0.38, 0.50], [0.34, 0.58]]);
+  // Cerebrum/cerebellum cleft.
+  sulcus(8, 0.028, [[0.61, 0.63], [0.72, 0.58], [0.84, 0.60], [0.96, 0.63]]);
 
   if (hasBlur) ctx.filter = "none";
   ctx.globalCompositeOperation = "source-over";
 }
 
-// Lightbulb: glass envelope drawn as a hollow wall so it reads as glass you can
-// see through, filament inside, threaded base below.
+// Lightbulb, drawn as one continuous outline rather than stacked primitives:
+// an A19 envelope is a pear, not an ellipse sitting on a cone, and the join
+// between glass and neck is a smooth shoulder. The relief — a lit dome on the
+// glass, a helical thread on the base — is written into the luminance channels
+// the same way the brain's folds are, so the sampler displaces it along z.
 function drawBulb(ctx: CanvasRenderingContext2D, w: number, h: number) {
   const x = (v: number) => v * w;
   const y = (v: number) => v * h;
+
   ctx.fillStyle = "#fff";
 
-  // Glass envelope.
+  // Envelope: crown, shoulders, then the waist drawn in to the neck.
   ctx.beginPath();
-  ctx.ellipse(x(0.5), y(0.30), x(0.40), y(0.25), 0, 0, Math.PI * 2);
-  ctx.fill();
-
-  // Neck tapering into the base.
-  ctx.beginPath();
-  ctx.moveTo(x(0.30), y(0.44));
-  ctx.bezierCurveTo(x(0.34), y(0.54), x(0.38), y(0.56), x(0.38), y(0.62));
-  ctx.lineTo(x(0.62), y(0.62));
-  ctx.bezierCurveTo(x(0.62), y(0.56), x(0.66), y(0.54), x(0.70), y(0.44));
+  ctx.moveTo(x(0.50), y(0.05));
+  ctx.bezierCurveTo(x(0.78), y(0.05), x(0.92), y(0.22), x(0.90), y(0.38));
+  ctx.bezierCurveTo(x(0.89), y(0.48), x(0.80), y(0.53), x(0.72), y(0.58));
+  ctx.bezierCurveTo(x(0.66), y(0.62), x(0.63), y(0.64), x(0.63), y(0.68));
+  ctx.lineTo(x(0.37), y(0.68));
+  ctx.bezierCurveTo(x(0.37), y(0.64), x(0.34), y(0.62), x(0.28), y(0.58));
+  ctx.bezierCurveTo(x(0.20), y(0.53), x(0.11), y(0.48), x(0.10), y(0.38));
+  ctx.bezierCurveTo(x(0.08), y(0.22), x(0.22), y(0.05), x(0.50), y(0.05));
   ctx.closePath();
   ctx.fill();
 
-  // Screw base.
+  // Screw base: collar, threaded barrel, contact tip.
   ctx.beginPath();
-  ctx.moveTo(x(0.38), y(0.62));
-  ctx.lineTo(x(0.62), y(0.62));
-  ctx.lineTo(x(0.60), y(0.92));
-  ctx.bezierCurveTo(x(0.58), y(0.98), x(0.42), y(0.98), x(0.40), y(0.92));
+  ctx.moveTo(x(0.37), y(0.68));
+  ctx.lineTo(x(0.63), y(0.68));
+  ctx.lineTo(x(0.62), y(0.88));
+  ctx.bezierCurveTo(x(0.61), y(0.94), x(0.57), y(0.97), x(0.50), y(0.97));
+  ctx.bezierCurveTo(x(0.43), y(0.97), x(0.39), y(0.94), x(0.38), y(0.88));
   ctx.closePath();
   ctx.fill();
 
-  // Threads on the base.
-  ctx.globalCompositeOperation = "destination-out";
-  ctx.strokeStyle = "#000";
-  ctx.lineCap = "round";
-  ctx.lineWidth = Math.max(2, w * 0.022);
-  for (const ty of [0.70, 0.78, 0.86]) {
-    ctx.beginPath();
-    ctx.moveTo(x(0.38), y(ty));
-    ctx.lineTo(x(0.62), y(ty));
-    ctx.stroke();
+  // Relief into the luminance channels.
+  const img = ctx.getImageData(0, 0, w, h);
+  const px = img.data;
+  for (let j = 0; j < h; j++) {
+    for (let i = 0; i < w; i++) {
+      const o = (j * w + i) * 4;
+      if (px[o + 3] < 128) continue;
+      const u = i / w;
+      const v = j / h;
+
+      let height: number;
+      if (v > 0.68) {
+        // Helical thread: a sine in v skewed by u, so the ridge climbs across
+        // the barrel instead of ringing it in flat bands.
+        const helix = Math.sin((v - 0.68) * 108 + (u - 0.5) * 7);
+        height = 0.34 + 0.66 * (0.5 + 0.5 * helix);
+      } else {
+        // Glass: a dome, brightest where the envelope bulges towards the
+        // viewer and falling away towards the silhouette.
+        const dome = Math.max(0, 1 - Math.hypot((u - 0.5) / 0.42, (v - 0.34) / 0.34));
+        height = 0.42 + 0.58 * Math.sqrt(dome);
+      }
+
+      const level = Math.round(Math.max(0, Math.min(1, height)) * 255);
+      px[o] = level;
+      px[o + 1] = level;
+      px[o + 2] = level;
+    }
   }
-  // Filament, carved out of the envelope so it reads as a void in the glass.
-  ctx.lineWidth = Math.max(3, w * 0.030);
+  ctx.putImageData(img, 0, 0);
+
+  const hasBlur = "filter" in ctx;
+  if (hasBlur) ctx.filter = `blur(${Math.max(1, w * 0.005)}px)`;
+  ctx.globalCompositeOperation = "source-atop";
+  ctx.lineCap = "round";
+
+  // The collar between glass and base, and the seam at the contact tip.
+  ctx.strokeStyle = "rgb(14,14,14)";
+  ctx.lineWidth = Math.max(2, w * 0.020);
   ctx.beginPath();
-  ctx.moveTo(x(0.43), y(0.46));
-  ctx.lineTo(x(0.43), y(0.34));
-  ctx.lineTo(x(0.47), y(0.26));
-  ctx.lineTo(x(0.50), y(0.34));
-  ctx.lineTo(x(0.53), y(0.26));
-  ctx.lineTo(x(0.57), y(0.34));
-  ctx.lineTo(x(0.57), y(0.46));
+  ctx.moveTo(x(0.37), y(0.685));
+  ctx.lineTo(x(0.63), y(0.685));
   ctx.stroke();
 
+  // Filament: stem posts and the coiled loop between them, carried as a bright
+  // ridge so it stands proud inside the glass rather than punching a hole.
+  ctx.strokeStyle = "rgb(255,255,255)";
+  ctx.lineWidth = Math.max(2, w * 0.016);
+  ctx.beginPath();
+  ctx.moveTo(x(0.44), y(0.60));
+  ctx.lineTo(x(0.44), y(0.40));
+  ctx.lineTo(x(0.47), y(0.30));
+  ctx.lineTo(x(0.50), y(0.38));
+  ctx.lineTo(x(0.53), y(0.30));
+  ctx.lineTo(x(0.56), y(0.40));
+  ctx.lineTo(x(0.56), y(0.60));
+  ctx.stroke();
+
+  if (hasBlur) ctx.filter = "none";
   ctx.globalCompositeOperation = "source-over";
 }
 
@@ -423,7 +526,7 @@ export default function Constellation() {
       const clouds: Cloud[] = [
         sampleSilhouette(drawBrain, count, 1.3, 0.42),
         sampleSphere(count, 1),
-        sampleSilhouette(drawBulb, count, 0.62, 0.34),
+        sampleSilhouette(drawBulb, count, 0.66, 0.36),
         sampleScatter(count, 1.5, rand),
       ];
 
