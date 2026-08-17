@@ -28,9 +28,14 @@ const CAMERA = 3.2; // Perspective distance in shape-space units.
 
 type Vec3 = { x: number; y: number; z: number };
 
+/** Positions plus the surface normal at each one, so relief can be lit. */
+type Cloud = { pos: Vec3[]; nrm: Vec3[] };
+
 type Particle = {
   /** One position per shape — index matches SHAPE_NAMES. */
   shapes: Vec3[];
+  /** Matching surface normal per shape, so relief catches the light. */
+  normals: Vec3[];
   size: number;
   spin: number;
   phase: number;
@@ -44,14 +49,22 @@ type Glyph = { x: number; y: number; size: number; spin: number; drift: number; 
 
 // ---------------------------------------------------------------- silhouettes
 
-// Side view: frontal lobe left, cerebellum bulging at the lower right, short
-// stem below. The gyri are erased back out — without them the sampled points
-// read as a generic blob rather than a brain.
+// Side view: frontal lobe left, cerebellum at the lower right, stem below.
+//
+// The silhouette is drawn as a HEIGHT MAP, not a flat cut-out. White is the
+// crown of a gyrus, dark grey the floor of a sulcus, and the sampler turns that
+// luminance into displacement along z. Carving the folds out of a flat
+// silhouette — the previous approach — left holes that stayed holes no matter
+// how the cloud turned, because there was no depth behind them. Displacing
+// instead of deleting is what makes the convolutions wrap around the surface
+// and read as an actual brain.
 function drawBrain(ctx: CanvasRenderingContext2D, w: number, h: number) {
   const x = (v: number) => v * w;
   const y = (v: number) => v * h;
+
   ctx.fillStyle = "#fff";
 
+  // Cerebrum.
   ctx.beginPath();
   ctx.moveTo(x(0.07), y(0.50));
   ctx.bezierCurveTo(x(0.04), y(0.27), x(0.20), y(0.07), x(0.44), y(0.07));
@@ -62,10 +75,12 @@ function drawBrain(ctx: CanvasRenderingContext2D, w: number, h: number) {
   ctx.closePath();
   ctx.fill();
 
+  // Cerebellum.
   ctx.beginPath();
   ctx.ellipse(x(0.79), y(0.70), x(0.16), y(0.13), 0, 0, Math.PI * 2);
   ctx.fill();
 
+  // Brain stem.
   ctx.beginPath();
   ctx.moveTo(x(0.56), y(0.72));
   ctx.bezierCurveTo(x(0.60), y(0.88), x(0.56), y(0.98), x(0.47), y(0.99));
@@ -73,12 +88,18 @@ function drawBrain(ctx: CanvasRenderingContext2D, w: number, h: number) {
   ctx.closePath();
   ctx.fill();
 
-  ctx.globalCompositeOperation = "destination-out";
-  ctx.strokeStyle = "#000";
+  // Sulci, painted as soft dark valleys inside the silhouette. Blurring them
+  // matters: a hard-edged groove quantises into a stair when the grid samples
+  // it, while a soft one gives the shoulder of each gyrus a gradient to sit on.
+  const hasBlur = "filter" in ctx;
+  if (hasBlur) ctx.filter = `blur(${Math.max(1.5, w * 0.008)}px)`;
+  ctx.globalCompositeOperation = "source-atop";
   ctx.lineCap = "round";
-  ctx.lineWidth = Math.max(4, w * 0.026);
+  ctx.lineJoin = "round";
 
-  const fold = (pts: number[][]) => {
+  const sulcus = (depth: number, width: number, pts: number[][]) => {
+    ctx.strokeStyle = `rgb(${depth},${depth},${depth})`;
+    ctx.lineWidth = Math.max(2, w * width);
     ctx.beginPath();
     ctx.moveTo(x(pts[0][0]), y(pts[0][1]));
     for (let i = 1; i < pts.length - 1; i++) {
@@ -89,17 +110,28 @@ function drawBrain(ctx: CanvasRenderingContext2D, w: number, h: number) {
     ctx.stroke();
   };
 
-  fold([[0.13, 0.44], [0.24, 0.30], [0.36, 0.42], [0.48, 0.27], [0.60, 0.36]]);
-  fold([[0.16, 0.63], [0.30, 0.52], [0.42, 0.62], [0.56, 0.48], [0.70, 0.54]]);
-  fold([[0.33, 0.15], [0.46, 0.24], [0.60, 0.13], [0.74, 0.24], [0.86, 0.18]]);
-  fold([[0.62, 0.40], [0.74, 0.31], [0.86, 0.42], [0.92, 0.34]]);
+  // Lateral (Sylvian) fissure — the deepest and most recognisable groove.
+  sulcus(18, 0.030, [[0.14, 0.55], [0.28, 0.60], [0.44, 0.58], [0.58, 0.50], [0.68, 0.46]]);
+  // Central sulcus, running down from the crown.
+  sulcus(28, 0.024, [[0.52, 0.10], [0.48, 0.24], [0.44, 0.38], [0.38, 0.50], [0.34, 0.58]]);
+  // Secondary sulci across the lobes.
+  sulcus(48, 0.020, [[0.12, 0.40], [0.22, 0.30], [0.32, 0.36], [0.40, 0.26], [0.48, 0.30]]);
+  sulcus(48, 0.020, [[0.16, 0.68], [0.28, 0.70], [0.40, 0.68], [0.50, 0.64], [0.58, 0.62]]);
+  sulcus(52, 0.018, [[0.30, 0.14], [0.40, 0.20], [0.50, 0.15], [0.60, 0.20], [0.70, 0.16]]);
+  sulcus(52, 0.018, [[0.60, 0.28], [0.70, 0.22], [0.80, 0.30], [0.88, 0.26]]);
+  sulcus(52, 0.018, [[0.62, 0.40], [0.72, 0.36], [0.82, 0.44], [0.90, 0.40]]);
+  sulcus(56, 0.016, [[0.20, 0.22], [0.26, 0.16], [0.32, 0.24]]);
+  sulcus(56, 0.016, [[0.44, 0.44], [0.54, 0.40], [0.62, 0.46]]);
+  sulcus(56, 0.016, [[0.10, 0.52], [0.16, 0.46], [0.22, 0.52]]);
 
-  ctx.lineWidth = Math.max(5, w * 0.032);
-  ctx.beginPath();
-  ctx.moveTo(x(0.62), y(0.63));
-  ctx.quadraticCurveTo(x(0.78), y(0.55), x(0.95), y(0.62));
-  ctx.stroke();
+  // The cleft between cerebrum and cerebellum.
+  sulcus(14, 0.026, [[0.62, 0.63], [0.72, 0.58], [0.84, 0.60], [0.95, 0.63]]);
+  // Cerebellum's own fine horizontal striations.
+  sulcus(40, 0.012, [[0.66, 0.66], [0.78, 0.64], [0.92, 0.66]]);
+  sulcus(40, 0.012, [[0.66, 0.72], [0.78, 0.70], [0.92, 0.72]]);
+  sulcus(40, 0.012, [[0.68, 0.78], [0.79, 0.76], [0.90, 0.78]]);
 
+  if (hasBlur) ctx.filter = "none";
   ctx.globalCompositeOperation = "source-over";
 }
 
@@ -176,19 +208,24 @@ function sampleSilhouette(
   count: number,
   aspect: number,
   thickness: number
-): Vec3[] {
+): Cloud {
   const mw = 320;
   const mh = Math.max(1, Math.round(mw / aspect));
   const mask = document.createElement("canvas");
   mask.width = mw;
   mask.height = mh;
   const mctx = mask.getContext("2d", { willReadFrequently: true });
-  if (!mctx) return Array.from({ length: count }, () => ({ x: 0, y: 0, z: 0 }));
+  if (!mctx) return flatCloud(count);
   draw(mctx, mw, mh);
   const data = mctx.getImageData(0, 0, mw, mh).data;
 
   const inside = (px: number, py: number) =>
     px >= 0 && py >= 0 && px < mw && py < mh && data[((py | 0) * mw + (px | 0)) * 4 + 3] >= 128;
+
+  // Luminance is height: white is the crown of a fold, dark grey the floor of a
+  // groove. Shapes with no relief are drawn in flat white and simply come back
+  // as 1 everywhere.
+  const height = (px: number, py: number) => data[(((py | 0) * mw + (px | 0)) * 4)] / 255;
 
   const walk = (spacing: number, collect: ((px: number, py: number, gx: number, gy: number) => void) | null) => {
     let hits = 0;
@@ -211,7 +248,10 @@ function sampleSilhouette(
   const first = walk(spacing, null);
   if (first > 0) spacing = Math.max(1.5, spacing * Math.sqrt(first / count));
 
-  const out: Vec3[] = [];
+  const pos: Vec3[] = [];
+  const nrm: Vec3[] = [];
+  const probe = 2;
+
   walk(spacing, (px, py, gx, gy) => {
     const nx = (px / mw - 0.5) * 2;
     const ny = ((py / mh - 0.5) * 2) / aspect;
@@ -220,15 +260,50 @@ function sampleSilhouette(
     // shell rather than one flat slab — that is what gives the lattice depth
     // when the cloud turns.
     const edge = Math.max(0, 1 - Math.hypot(nx, ny * aspect));
-    const z = ((gx + gy) % 2 === 0 ? 1 : -1) * thickness * Math.sqrt(edge);
-    out.push({ x: nx, y: ny, z });
+    const shell = (gx + gy) % 2 === 0 ? 1 : -1;
+    // Two terms: the lens bulge that gives the whole shape its body, and the
+    // relief that sinks each groove into that body. A groove has to displace
+    // the surface rather than punch through it — otherwise it is a hole, and a
+    // hole looks the same from every angle.
+    const relief = 0.35 + 0.65 * height(px, py);
+    const z = shell * thickness * Math.sqrt(edge) * relief;
+    pos.push({ x: nx, y: ny, z });
+
+    // Surface normal. Displacing the grooves is only half the job: without a
+    // normal that tilts with them they receive the same light as the crests and
+    // the relief stays invisible. The gradient of the height map supplies that
+    // tilt; blending it with the radial direction keeps the whole shape reading
+    // as convex rather than as a flat panel of bumps.
+    const dhdx = height(Math.min(mw - 1, px + probe), py) - height(Math.max(0, px - probe), py);
+    const dhdy = height(px, Math.min(mh - 1, py + probe)) - height(px, Math.max(0, py - probe));
+    const BUMP = 3.2;
+    let bx = -dhdx * BUMP;
+    let by = -dhdy * BUMP;
+    let bz = shell;
+    const bl = Math.hypot(bx, by, bz) || 1;
+    bx /= bl; by /= bl; bz /= bl;
+
+    const rl = Math.hypot(nx, ny, z) || 1;
+    let vx = (nx / rl) * 0.55 + bx * 0.45;
+    let vy = (ny / rl) * 0.55 + by * 0.45;
+    let vz = (z / rl) * 0.55 + bz * 0.45;
+    const vl = Math.hypot(vx, vy, vz) || 1;
+    nrm.push({ x: vx / vl, y: vy / vl, z: vz / vl });
   });
 
-  if (out.length === 0) return Array.from({ length: count }, () => ({ x: 0, y: 0, z: 0 }));
+  if (pos.length === 0) return flatCloud(count);
   // Every cloud must be the same length for the morph to stay a straight lerp.
-  const sampled = out.length;
-  for (let i = sampled; i < count; i++) out.push(out[i % sampled]);
-  return out.slice(0, count);
+  const sampled = pos.length;
+  for (let i = sampled; i < count; i++) {
+    pos.push(pos[i % sampled]);
+    nrm.push(nrm[i % sampled]);
+  }
+  return { pos: pos.slice(0, count), nrm: nrm.slice(0, count) };
+}
+
+function flatCloud(count: number): Cloud {
+  const zero = Array.from({ length: count }, () => ({ x: 0, y: 0, z: 0 }));
+  return { pos: zero, nrm: zero.map(() => ({ x: 0, y: 0, z: 1 })) };
 }
 
 /**
@@ -236,7 +311,7 @@ function sampleSilhouette(
  * points more evenly, but the reference's globe is visibly ruled into rows, and
  * those rows are the point.
  */
-function sampleSphere(count: number, radius: number): Vec3[] {
+function sampleSphere(count: number, radius: number): Cloud {
   const rows = Math.max(2, Math.round(Math.sqrt(count / 2)));
   const out: Vec3[] = [];
   for (let r = 0; r < rows; r++) {
@@ -251,23 +326,30 @@ function sampleSphere(count: number, radius: number): Vec3[] {
       out.push({ x: Math.cos(theta) * ring * radius, y: y * radius, z: Math.sin(theta) * ring * radius });
     }
   }
-  if (out.length === 0) return Array.from({ length: count }, () => ({ x: 0, y: 0, z: 0 }));
+  if (out.length === 0) return flatCloud(count);
   const sampled = out.length;
   for (let i = sampled; i < count; i++) out.push(out[i % sampled]);
-  return out.slice(0, count);
+  const pos = out.slice(0, count);
+  return { pos, nrm: pos.map((p) => ({ x: p.x / radius, y: p.y / radius, z: p.z / radius })) };
 }
 
 /** Loose ball of points — the dispersed state between the solid shapes. */
-function sampleScatter(count: number, radius: number, rand: () => number): Vec3[] {
-  const out: Vec3[] = [];
+function sampleScatter(count: number, radius: number, rand: () => number): Cloud {
+  const pos: Vec3[] = [];
+  const nrm: Vec3[] = [];
   for (let i = 0; i < count; i++) {
     const u = rand() * 2 - 1;
     const theta = rand() * Math.PI * 2;
     const r = radius * Math.cbrt(rand());
     const s = Math.sqrt(Math.max(0, 1 - u * u));
-    out.push({ x: Math.cos(theta) * s * r, y: u * r, z: Math.sin(theta) * s * r });
+    const x = Math.cos(theta) * s * r;
+    const y = u * r;
+    const z = Math.sin(theta) * s * r;
+    pos.push({ x, y, z });
+    const l = Math.hypot(x, y, z) || 1;
+    nrm.push({ x: x / l, y: y / l, z: z / l });
   }
-  return out;
+  return { pos, nrm };
 }
 
 // Shape order; a section names one of these in `data-shape`.
@@ -323,7 +405,7 @@ export default function Constellation() {
       canvas!.style.height = `${h}px`;
       ctx!.setTransform(dpr, 0, 0, dpr, 0, 0);
 
-      baseScale = Math.min(w * (w >= 900 ? 0.34 : 0.46), h * 0.46);
+      baseScale = Math.min(w * (w >= 900 ? 0.30 : 0.44), h * 0.42);
       slots = Array.from(document.querySelectorAll<HTMLElement>("[data-orb]"));
       return Math.round(Math.min(5600, (w * h) / 280));
     }
@@ -338,7 +420,7 @@ export default function Constellation() {
       particleCount = count;
       const rand = mulberry32(20260817);
 
-      const clouds: Vec3[][] = [
+      const clouds: Cloud[] = [
         sampleSilhouette(drawBrain, count, 1.3, 0.42),
         sampleSphere(count, 1),
         sampleSilhouette(drawBulb, count, 0.62, 0.34),
@@ -348,7 +430,8 @@ export default function Constellation() {
       const next: Particle[] = [];
       for (let i = 0; i < count; i++) {
         next.push({
-          shapes: clouds.map((c) => c[i]),
+          shapes: clouds.map((c) => c.pos[i]),
+          normals: clouds.map((c) => c.nrm[i]),
           size: 2.1,
           spin: rand() * Math.PI * 2,
           phase: rand() * Math.PI * 2,
@@ -392,7 +475,7 @@ export default function Constellation() {
       if (!best) return { x: w * 0.5, y: h * 0.5, scale: baseScale * 1.15, alpha: 0.12, shape: view.shape };
 
       const rect = best.getBoundingClientRect();
-      const side = best.dataset.orb === "left" ? 0.31 : 0.69;
+      const side = best.dataset.orb === "left" ? 0.32 : 0.68;
       const shape = Math.max(0, SHAPE_NAMES.indexOf(best.dataset.shape ?? "brain"));
       return {
         // Below the two-column breakpoint there is no free half, so the field
@@ -462,11 +545,21 @@ export default function Constellation() {
         const ry = y0 * cosX - rz * sinX;
         const rzz = y0 * sinX + rz * cosX;
 
-        // Every cloud is centred on the origin, so the direction out from the
-        // centre stands in for the surface normal — accurate enough for a
-        // shell, and free, since the rotated position is already to hand.
-        const len = Math.hypot(rx, ry, rzz) || 1;
-        const lit = (rx * LX + ry * LY + rzz * LZ) / len;
+        // Shade by the real surface normal rather than the direction out from
+        // the centre. The radial approximation is fine for a smooth ball, but it
+        // gives a groove the same orientation as the crest beside it — which is
+        // exactly why the brain's convolutions were invisible.
+        const na = particle.normals[from];
+        const nb = particle.normals[to];
+        const mx = na.x + (nb.x - na.x) * blend;
+        const my = na.y + (nb.y - na.y) * blend;
+        const mz = na.z + (nb.z - na.z) * blend;
+        const nrx = mx * cosY + mz * sinY;
+        const nrz = -mx * sinY + mz * cosY;
+        const nry = my * cosX - nrz * sinX;
+        const nrzz = my * sinX + nrz * cosX;
+        const len = Math.hypot(nrx, nry, nrzz) || 1;
+        const lit = (nrx * LX + nry * LY + nrzz * LZ) / len;
         const step = Math.min(
           RAMP.length - 1,
           Math.max(0, Math.round((1 - (lit + 1) / 2) * (RAMP.length - 1)) + particle.tint)
