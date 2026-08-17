@@ -1,0 +1,392 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../app/generated/prisma"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+model Product {
+  id        String   @id @default(cuid())
+  name      String
+  slug      String   @unique @default("")
+  category  String   @default("")
+  imageUrl  String   @default("")
+  price     Float
+  cost      Float    @default(0)
+  currency  String   @default("USD")
+  stock     Int      @default(0)
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Science/catalog content shown on the storefront (ProductDetailModal,
+  // Science page), editable from the admin Products form. `bullets`/
+  // `bulletsEs` store a JSON-stringified string[] ("studied benefits").
+  // `stat*` is optional supporting data (e.g. a trial figure) shown above
+  // the bullets when statValue is non-empty.
+  action      String @default("")
+  actionEs    String @default("")
+  blurb       String @default("")
+  blurbEs     String @default("")
+  bullets     String @default("[]")
+  bulletsEs   String @default("[]")
+  note        String @default("")
+  noteEs      String @default("")
+  statValue   String @default("")
+  statLabel   String @default("")
+  statLabelEs String @default("")
+
+  // Dosing schedule, carried over from the wholesale price list's own
+  // Concentration/Frequency/Dose(clicks)/Duration/Break columns. Concentration
+  // is unit/number data (identical in both locales); the rest get a
+  // translated string since some are short descriptive phrases, not just
+  // numbers (e.g. Tirzepatide's ramp-up schedule).
+  concentration String @default("")
+  frequency     String @default("")
+  frequencyEs   String @default("")
+  dose          String @default("")
+  doseEs        String @default("")
+  duration      String @default("")
+  durationEs    String @default("")
+  breakPeriod   String @default("")
+  breakPeriodEs String @default("")
+
+  orderItems OrderItem[]
+}
+
+model Category {
+  id        String   @id @default(cuid())
+  name      String   @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Customer {
+  id                     String    @id @default(cuid())
+  firstName              String
+  lastName               String
+  email                  String    @unique
+  phone                  String    @default("")
+  address                String    @default("")
+  // Lead context captured by the site contact form and the chat agent —
+  // `notes` holds the visitor's own description of what they want built, so
+  // the backoffice shows the actual ask instead of just a name and email.
+  company                String    @default("")
+  notes                  String    @default("")
+  source                 String    @default("manual")
+  passwordHash           String    @default("")
+  resetToken             String?   @unique
+  resetTokenExpiresAt    DateTime?
+  acceptedDisclaimerAt   DateTime?
+  onvoCustomerId         String?
+  referredByAffiliateId  String?
+  referredByAffiliate    Affiliate? @relation(fields: [referredByAffiliateId], references: [id])
+  createdAt              DateTime  @default(now())
+  updatedAt              DateTime  @updatedAt
+
+  orders             Order[]
+  emailRecipients    EmailRecipient[]
+  chatSessions       ChatSession[]
+  contactListMembers ContactListMember[]
+}
+
+model Order {
+  id                    String    @id @default(cuid())
+  customer              Customer  @relation(fields: [customerId], references: [id])
+  customerId            String
+  paymentStatus         String    @default("pending")
+  deliveryStatus        String    @default("pending")
+  paymentMethod         String    @default("")
+  subtotal              Float     @default(0)
+  shippingCharge        Float     @default(0)
+  total                 Float
+  currency              String    @default("USD")
+  notes                 String    @default("")
+  shippingName          String    @default("")
+  shippingAddress       String    @default("")
+  shippingCity          String    @default("")
+  shippingState         String    @default("")
+  shippingZip           String    @default("")
+  shippingCountry       String    @default("")
+  onvoPaymentIntentId   String?
+  payToken              String?   @unique
+  emailSent             Boolean   @default(false)
+  // source records where the order came from ("site" for the normal
+  // checkout/admin-created flow, "chat" for the site chat sales agent).
+  // reviewStatus gates whether a human has to approve it before a payment
+  // link goes out — site/admin-created orders are approved immediately
+  // (unchanged behavior); only "chat" orders start pending_review.
+  source                String    @default("site")
+  reviewStatus          String    @default("approved")
+  affiliateId           String?
+  affiliate             Affiliate?    @relation(fields: [affiliateId], references: [id])
+  discountCodeId        String?
+  discountCode          DiscountCode? @relation(fields: [discountCodeId], references: [id])
+  discountAmount        Float         @default(0)
+  promoCodeText         String        @default("")
+  trackingNumber        String?
+  carrier               String        @default("")
+  labelUrl              String        @default("")
+  podDeliveredAt        DateTime?
+  podSignee             String        @default("")
+  podGpsCoordinates     String        @default("")
+  podImageUrl           String        @default("")
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+
+  items OrderItem[]
+  shipmentEvents ShipmentEvent[]
+}
+
+// One row per FedEx tracking scan event received via the Advanced
+// Integrated Visibility webhook (app/api/webhooks/fedex) — kept as its own
+// table (rather than folded into Order) so the customer-facing tracking
+// page can render a full timeline, not just the latest status.
+model ShipmentEvent {
+  id                  String   @id @default(cuid())
+  orderId             String
+  order               Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  eventCode           String
+  eventDescription    String
+  eventCreateTime     DateTime
+  city                String   @default("")
+  stateOrProvinceCode String   @default("")
+  countryCode         String   @default("")
+  createdAt           DateTime @default(now())
+
+  @@index([orderId])
+}
+
+model OrderItem {
+  id        String  @id @default(cuid())
+  order     Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  orderId   String
+  product   Product @relation(fields: [productId], references: [id])
+  productId String
+  quantity  Int
+  unitPrice Float
+  unitCost  Float   @default(0)
+  total     Float
+}
+
+model OperationalExpense {
+  id        String   @id @default(cuid())
+  name      String
+  amount    Float
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model AdminUser {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  passwordHash String
+  name         String   @default("")
+  role         String   @default("admin")
+  active       Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+model EmailCampaign {
+  id             String   @id @default(cuid())
+  subject        String
+  body           String
+  // headerImageUrl renders full-width at the top, below the brand logo;
+  // imageUrl floats to the right of the body text (wrapped in an
+  // overflow:auto container so the text reflows around it);
+  // footerImageUrl renders full-width below the body, above the
+  // regulatory disclaimer.
+  headerImageUrl String   @default("")
+  imageUrl       String   @default("")
+  footerImageUrl String   @default("")
+  status         String   @default("draft")
+  sentAt         DateTime?
+  recipientCount Int      @default(0)
+  deliveredCount Int      @default(0)
+  openCount      Int      @default(0)
+  bounceCount    Int      @default(0)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  recipients EmailRecipient[]
+}
+
+// A saved subject/body/images combo an admin can start a new campaign
+// from, so recurring email designs don't have to be rebuilt every time.
+model EmailTemplate {
+  id             String   @id @default(cuid())
+  name           String
+  subject        String
+  body           String
+  headerImageUrl String   @default("")
+  imageUrl       String   @default("")
+  footerImageUrl String   @default("")
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+}
+
+// A named group of customers a campaign can be targeted at, instead of
+// "all customers" or a one-off hand-picked selection every time.
+model ContactList {
+  id          String   @id @default(cuid())
+  name        String
+  description String   @default("")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  members ContactListMember[]
+}
+
+model ContactListMember {
+  id         String      @id @default(cuid())
+  list       ContactList @relation(fields: [listId], references: [id], onDelete: Cascade)
+  listId     String
+  customer   Customer    @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  customerId String
+  createdAt  DateTime    @default(now())
+
+  @@unique([listId, customerId])
+}
+
+model EmailRecipient {
+  id         String        @id @default(cuid())
+  campaign   EmailCampaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  campaignId String
+  customer   Customer      @relation(fields: [customerId], references: [id])
+  customerId String
+  email      String
+  messageId  String        @default("")
+  status     String        @default("sent")
+  createdAt  DateTime      @default(now())
+}
+
+model SiteSettings {
+  id          String   @id @default("default")
+  shippingFee Float    @default(25)
+  pagoTarjeta Boolean  @default(true)
+  // Free-text delivery/support policy the admin maintains; fed verbatim
+  // into the site chat sales agent's system prompt alongside the live
+  // product catalog, so business-policy knowledge never has to be
+  // hard-coded or guessed.
+  agentInfo   String   @default("")
+
+  // The "ship from" address and default package weight for the FedEx Ship
+  // API integration — one warehouse address for the whole store, entered
+  // once here instead of per-shipment.
+  shipperName            String @default("")
+  shipperCompany         String @default("")
+  shipperPhone           String @default("")
+  shipperStreet          String @default("")
+  shipperCity            String @default("")
+  shipperState           String @default("")
+  shipperZip             String @default("")
+  shipperCountry         String @default("US")
+  defaultPackageWeightLb Float  @default(1)
+
+  updatedAt   DateTime @updatedAt
+}
+
+// One row per browser session that has opened the site chat widget, keyed
+// by a random visitorId issued to that browser (cookie/localStorage) rather
+// than any identity — name/email/phone are filled in only once the visitor
+// actually shares them mid-conversation. Only linked to a Customer once an
+// order has been created (find-or-create by email at that point).
+model ChatSession {
+  id         String    @id @default(cuid())
+  visitorId  String    @unique
+  name       String    @default("")
+  email      String    @default("")
+  phone      String    @default("")
+  customerId String?
+  customer   Customer? @relation(fields: [customerId], references: [id])
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+
+  messages ChatMessage[]
+}
+
+model ChatMessage {
+  id        String      @id @default(cuid())
+  session   ChatSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  sessionId String
+  role      String // "user" | "assistant"
+  body      String
+  // Admin correction attached to this specific reply from the conversation
+  // viewer in /admin/agent — e.g. "should have mentioned X" or "this was
+  // wrong, the real answer is Y". Every non-empty one gets fed into the
+  // system prompt as a standing correction, so the agent's mistakes get
+  // fixed going forward without editing the general agentInfo blob.
+  feedback  String      @default("")
+  createdAt DateTime    @default(now())
+
+  @@index([sessionId])
+}
+
+// One row per inbound POST to /api/chat, keyed by client IP — the only
+// signal that survives an attacker rotating visitorId (which is entirely
+// client-controlled, just a localStorage UUID). Used purely to count
+// recent requests within a sliding window and reject once the rate limit
+// is hit, before the expensive Anthropic API call ever happens. Rows older
+// than a day are pruned opportunistically so this never grows unbounded.
+model ChatRequestLog {
+  id        String   @id @default(cuid())
+  ip        String
+  createdAt DateTime @default(now())
+
+  @@index([ip, createdAt])
+}
+
+// A referral partner. Logs into the same admin backoffice login form as
+// AdminUser, but is a fully separate credential/table — an affiliate is not
+// a staff member and the middleware restricts an "affiliate" role session to
+// /admin/affiliates (and its own /api/affiliates/me data) only.
+model Affiliate {
+  id                    String   @id @default(cuid())
+  name                  String
+  email                 String   @unique
+  passwordHash          String
+  code                  String   @unique
+  // Discount the CUSTOMER gets for using this affiliate's code at checkout.
+  customerDiscountType  String   @default("percent") // "percent" | "fixed"
+  customerDiscountValue Float    @default(0)
+  // Base commission rate (percent) on referred revenue; tiers below can
+  // raise this once the affiliate's cumulative referred sales cross a
+  // threshold — see lib/affiliateCommission.ts for how tiers are applied.
+  baseCommissionRate    Float    @default(0)
+  active                Boolean  @default(true)
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
+  tiers             AffiliateTier[]
+  referredCustomers Customer[]
+  orders            Order[]
+}
+
+model AffiliateTier {
+  id          String    @id @default(cuid())
+  affiliate   Affiliate @relation(fields: [affiliateId], references: [id], onDelete: Cascade)
+  affiliateId String
+  // Once the affiliate's cumulative referred (paid) revenue reaches this
+  // amount, `rate` (percent) applies to further sales.
+  minSales    Float
+  rate        Float
+
+  @@index([affiliateId])
+}
+
+model DiscountCode {
+  id        String   @id @default(cuid())
+  code      String   @unique
+  type      String // "fixed" | "percent"
+  value     Float
+  maxUses   Int? // null = unlimited
+  usedCount Int      @default(0)
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  orders Order[]
+}
