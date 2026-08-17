@@ -223,12 +223,36 @@ input, select, textarea, button { font-family: inherit; color: inherit; }
 
 .rule { height: 1px; background: rgba(255,255,255,.10); border: none; margin: 0; }
 
-.reveal { opacity: 0; transform: translateY(18px); transition: opacity .7s ease, transform .7s ease; }
-.reveal.in { opacity: 1; transform: none; }
+/* GSAP flips this with autoAlpha once the lines are split, so text never
+   appears un-split for a frame. Keep it visibility-only: opacity is the
+   property the tweens animate. */
+.reveal { visibility: hidden; }
 
 @media (prefers-reduced-motion: reduce) {
-  .reveal { opacity: 1; transform: none; transition: none; }
+  .reveal { visibility: visible; }
 }
+
+/* Easing curves taken from the reference implementation's own stylesheet. */
+.site a,
+.site button { transition: color .5s cubic-bezier(.5, 1, .89, 1); }
+
+.pill { transition: transform .3s cubic-bezier(.25, 1, .5, 1), opacity .3s cubic-bezier(.25, 1, .5, 1); }
+
+.faq-plus { transition: transform .3s cubic-bezier(.25, 1, .5, 1); }
+
+/* Nav links grow an underline out from the left rather than changing weight. */
+.nav-link { position: relative; }
+.nav-link::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  bottom: -6px;
+  width: 0;
+  height: 1px;
+  background: var(--bone-white);
+  transition: width .6s cubic-bezier(.19, 1, .22, 1);
+}
+.nav-link:hover::after { width: 100%; }
 
 @media (max-width: 900px) {
   .site section { padding: var(--space-60) 0; }

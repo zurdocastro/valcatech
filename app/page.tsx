@@ -4,7 +4,7 @@ import SiteHeader from "@/components/site/SiteHeader";
 import ContactForm from "@/components/site/ContactForm";
 import ChatWidget from "@/components/site/ChatWidget";
 import Logo from "@/components/site/Logo";
-import { Reveal, StatCounter, Faq } from "@/components/site/ui";
+import { Reveal, Parallax, StatCounter, Faq } from "@/components/site/ui";
 import { AGENTS, AGENTS_INTRO, BRAND, CAPABILITIES, CLOSING, FAQ, FOOTER_BLURB, HERO, NAV, PROCESS, STATS } from "@/lib/content";
 
 export default function Home() {
@@ -17,26 +17,26 @@ export default function Home() {
         <div className="wrap">
           <div className="two-col" style={{ alignItems: "center", minHeight: "min(78vh, 720px)" }}>
             <div>
-              <Reveal>
+              <Reveal onLoad rotate={0}>
                 <p className="label" style={{ margin: "0 0 24px" }}>{HERO.label}</p>
               </Reveal>
-              <Reveal delay={80}>
+              <Reveal onLoad rotate={0} delay={0.2}>
                 <h1 className="display" style={{ margin: 0 }}>
                   {HERO.headline[0]}
                   <br />
                   {HERO.headline[1]}
                 </h1>
               </Reveal>
-              <Reveal delay={160}>
+              <Reveal onLoad delay={0.5}>
                 <p className="lede" style={{ margin: "30px 0 0" }}>{HERO.body}</p>
               </Reveal>
-              <Reveal delay={240}>
-                <div style={{ display: "flex", alignItems: "center", gap: 30, marginTop: 36, flexWrap: "wrap" }}>
+              <Reveal onLoad mask delay={1.5} style={{ marginTop: 36 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 30, flexWrap: "wrap" }}>
                   <a href="#contact" className="pill">{HERO.cta}</a>
                   <a href="#what-we-do" className="ghost">{HERO.secondaryCta} →</a>
                 </div>
               </Reveal>
-              <Reveal delay={320}>
+              <Reveal onLoad delay={1}>
                 <ul style={{ listStyle: "none", margin: "60px 0 0", padding: 0, display: "flex", flexDirection: "column", gap: 12 }}>
                   {HERO.points.map((point) => (
                     <li key={point} style={{ display: "flex", alignItems: "center", gap: 12, color: "var(--silver-mist)", fontSize: 15, fontWeight: 200 }}>
@@ -48,9 +48,9 @@ export default function Home() {
               </Reveal>
             </div>
 
-            <div aria-hidden style={{ height: "min(78vh, 720px)", minHeight: 340 }}>
+            <Parallax aria-hidden style={{ height: "min(78vh, 720px)", minHeight: 340 }}>
               <Constellation />
-            </div>
+            </Parallax>
           </div>
         </div>
       </section>
@@ -62,7 +62,7 @@ export default function Home() {
             <Reveal>
               <h2 className="h-lg" style={{ margin: 0 }}>What we build.</h2>
             </Reveal>
-            <Reveal delay={80}>
+            <Reveal delay={0.5}>
               <div>
                 <p className="label" style={{ margin: "0 0 18px" }}>Custom software</p>
                 <p className="body-muted" style={{ margin: 0, maxWidth: 520 }}>
@@ -80,7 +80,7 @@ export default function Home() {
               </Reveal>
               <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: 60 }}>
                 {group.items.map((item, i) => (
-                  <Reveal key={item.title} delay={i * 70}>
+                  <Reveal key={item.title} delay={i * 0.07}>
                     <h3 className="h-2xs" style={{ margin: "0 0 12px" }}>{item.title}</h3>
                     <p className="body-muted" style={{ margin: 0, fontSize: 16 }}>{item.body}</p>
                   </Reveal>
@@ -101,14 +101,14 @@ export default function Home() {
                 <h2 className="h-lg" style={{ margin: 0 }}>One agent per real problem.</h2>
               </div>
             </Reveal>
-            <Reveal delay={80}>
+            <Reveal delay={0.5}>
               <p className="body-muted" style={{ margin: 0, maxWidth: 520 }}>{AGENTS_INTRO}</p>
             </Reveal>
           </div>
 
           <div>
             {AGENTS.map((agent, i) => (
-              <Reveal key={agent.name} delay={Math.min(i, 6) * 40}>
+              <Reveal key={agent.name} delay={0}>
                 <hr className="rule" />
                 <div className="agent-row" style={{ display: "grid", gridTemplateColumns: "120px minmax(0, 1fr) minmax(0, 1.4fr)", gap: 30, alignItems: "baseline", padding: "30px 0" }}>
                   <span className="caption" style={{ color: "var(--iris)", textTransform: "uppercase", letterSpacing: "0.1em" }}>{agent.category}</span>
@@ -143,7 +143,7 @@ export default function Home() {
             <Reveal>
               <h2 className="h-lg" style={{ margin: 0 }}>How we work.</h2>
             </Reveal>
-            <Reveal delay={80}>
+            <Reveal delay={0.5}>
               <p className="body-muted" style={{ margin: 0, maxWidth: 520 }}>
                 Four steps, no surprises. Discovery is free and pricing only ever comes out of it — scoped to real,
                 tangible ROI.
@@ -153,7 +153,7 @@ export default function Home() {
 
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))", gap: 60 }}>
             {PROCESS.map((step, i) => (
-              <Reveal key={step.step} delay={i * 80}>
+              <Reveal key={step.step} delay={i * 0.08}>
                 <p className="label" style={{ margin: "0 0 18px", color: "var(--iris)" }}>{step.step}</p>
                 <h3 className="h-2xs" style={{ margin: "0 0 12px" }}>{step.title}</h3>
                 <p className="body-muted" style={{ margin: 0, fontSize: 16 }}>{step.body}</p>
@@ -170,7 +170,7 @@ export default function Home() {
             <Reveal>
               <h2 className="h-lg" style={{ margin: 0, position: "sticky", top: 120 }}>Questions.</h2>
             </Reveal>
-            <Reveal delay={80}>
+            <Reveal delay={0.5}>
               <Faq items={FAQ} />
             </Reveal>
           </div>
@@ -184,7 +184,7 @@ export default function Home() {
             <p className="label" style={{ margin: "0 0 36px" }}>{CLOSING.tagline}</p>
           </Reveal>
           <div className="two-col" style={{ alignItems: "start" }}>
-            <Reveal delay={80}>
+            <Reveal delay={0.5}>
               <div>
                 <h2 className="display" style={{ margin: 0 }}>{CLOSING.headline}</h2>
                 <p className="lede" style={{ margin: "30px 0 36px" }}>{CLOSING.body}</p>
@@ -196,7 +196,7 @@ export default function Home() {
                 </div>
               </div>
             </Reveal>
-            <Reveal delay={160}>
+            <Reveal delay={0.8}>
               <ContactForm />
             </Reveal>
           </div>
