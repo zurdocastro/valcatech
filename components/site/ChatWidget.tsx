@@ -107,7 +107,7 @@ export default function ChatWidget({ locale = "en" }: { locale?: Locale }) {
           position: "fixed", bottom: 24, right: 24, zIndex: 200, width: 56, height: 56, borderRadius: "50%",
           background: "var(--iris)", border: "none", cursor: "pointer",
           display: "flex", alignItems: "center", justifyContent: "center",
-          boxShadow: "0 10px 30px rgba(128,82,255,.4)", transition: "transform 0.2s ease",
+          transition: "transform 0.2s ease",
         }}
         onMouseEnter={(e) => { e.currentTarget.style.transform = "scale(1.06)"; }}
         onMouseLeave={(e) => { e.currentTarget.style.transform = "scale(1)"; }}
@@ -120,7 +120,7 @@ export default function ChatWidget({ locale = "en" }: { locale?: Locale }) {
           style={{
             position: "fixed", bottom: 92, right: 24, zIndex: 199, width: 360, maxWidth: "calc(100vw - 32px)",
             height: 480, maxHeight: "calc(100vh - 140px)",
-            background: "#0B0B0D", borderRadius: 24, boxShadow: "0 24px 60px rgba(0,0,0,.6)",
+            background: "#0B0B0D", borderRadius: 24,
             display: "flex", flexDirection: "column", overflow: "hidden",
           }}
         >
