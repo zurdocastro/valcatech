@@ -31,7 +31,26 @@ bun run test    # vitest
 bun run build   # prisma generate && next build
 ```
 
-## Deploying
+## Live
+
+- Site: https://valcatech.vercel.app
+- Backoffice: https://valcatech.vercel.app/admin
+- Vercel project: `zurdocastros-projects/valcatech`
+- Turso database: `valcatech` (`libsql://valcatech-zurdocastro.aws-us-east-2.turso.io`)
+
+Schema changes reach Turso through a generated SQL script — Prisma's SQLite
+datasource can't take a `libsql://` URL directly, so `prisma db push` only ever
+targets the local `dev.db`:
+
+```bash
+bunx prisma migrate diff --from-empty --to-schema prisma/schema.prisma --script -o schema.sql
+turso db shell valcatech < schema.sql
+```
+
+(For an incremental change use `--from-url`/`--from-schema` against the previous
+schema instead of `--from-empty`, or hand-write the `ALTER TABLE`.)
+
+## Deploying (first-time setup, already done)
 
 ### 1. Turso database
 
