@@ -69,7 +69,7 @@ function drawBrain(ctx: CanvasRenderingContext2D, w: number, h: number) {
   ctx.globalCompositeOperation = "destination-out";
   ctx.strokeStyle = "#000";
   ctx.lineCap = "round";
-  ctx.lineWidth = Math.max(3, w * 0.016);
+  ctx.lineWidth = Math.max(4, w * 0.026);
 
   const fold = (pts: number[][]) => {
     ctx.beginPath();
@@ -87,7 +87,7 @@ function drawBrain(ctx: CanvasRenderingContext2D, w: number, h: number) {
   fold([[0.33, 0.15], [0.46, 0.24], [0.60, 0.13], [0.74, 0.24], [0.86, 0.18]]);
   fold([[0.62, 0.40], [0.74, 0.31], [0.86, 0.42], [0.92, 0.34]]);
 
-  ctx.lineWidth = Math.max(4, w * 0.022);
+  ctx.lineWidth = Math.max(5, w * 0.032);
   ctx.beginPath();
   ctx.moveTo(x(0.62), y(0.63));
   ctx.quadraticCurveTo(x(0.78), y(0.55), x(0.95), y(0.62));
@@ -96,26 +96,67 @@ function drawBrain(ctx: CanvasRenderingContext2D, w: number, h: number) {
   ctx.globalCompositeOperation = "source-over";
 }
 
-// Human head in profile, facing left — the reference's other hero shape.
-function drawHead(ctx: CanvasRenderingContext2D, w: number, h: number) {
+// Lightbulb: glass envelope drawn as a hollow wall so it reads as glass you can
+// see through, filament inside, threaded base below.
+function drawBulb(ctx: CanvasRenderingContext2D, w: number, h: number) {
   const x = (v: number) => v * w;
   const y = (v: number) => v * h;
   ctx.fillStyle = "#fff";
 
+  // Glass envelope.
   ctx.beginPath();
-  ctx.moveTo(x(0.32), y(0.10));
-  ctx.bezierCurveTo(x(0.62), y(0.02), x(0.86), y(0.20), x(0.84), y(0.46));
-  ctx.bezierCurveTo(x(0.83), y(0.62), x(0.78), y(0.70), x(0.74), y(0.78));
-  ctx.bezierCurveTo(x(0.72), y(0.86), x(0.74), y(0.94), x(0.70), y(0.99));
-  ctx.lineTo(x(0.34), y(0.99));
-  ctx.bezierCurveTo(x(0.33), y(0.88), x(0.28), y(0.82), x(0.24), y(0.76));
-  // Chin, lips, nose, brow — the profile that makes it read as a head.
-  ctx.bezierCurveTo(x(0.17), y(0.72), x(0.13), y(0.66), x(0.16), y(0.62));
-  ctx.bezierCurveTo(x(0.12), y(0.60), x(0.10), y(0.57), x(0.13), y(0.53));
-  ctx.bezierCurveTo(x(0.05), y(0.50), x(0.09), y(0.44), x(0.15), y(0.40));
-  ctx.bezierCurveTo(x(0.18), y(0.30), x(0.20), y(0.16), x(0.32), y(0.10));
+  ctx.ellipse(x(0.5), y(0.30), x(0.40), y(0.25), 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Neck tapering into the base.
+  ctx.beginPath();
+  ctx.moveTo(x(0.30), y(0.44));
+  ctx.bezierCurveTo(x(0.34), y(0.54), x(0.38), y(0.56), x(0.38), y(0.62));
+  ctx.lineTo(x(0.62), y(0.62));
+  ctx.bezierCurveTo(x(0.62), y(0.56), x(0.66), y(0.54), x(0.70), y(0.44));
   ctx.closePath();
   ctx.fill();
+
+  // Screw base.
+  ctx.beginPath();
+  ctx.moveTo(x(0.38), y(0.62));
+  ctx.lineTo(x(0.62), y(0.62));
+  ctx.lineTo(x(0.60), y(0.92));
+  ctx.bezierCurveTo(x(0.58), y(0.98), x(0.42), y(0.98), x(0.40), y(0.92));
+  ctx.closePath();
+  ctx.fill();
+
+  // Hollow out the glass, leaving a wall — the particles then trace the
+  // envelope instead of filling it as a solid lump.
+  ctx.globalCompositeOperation = "destination-out";
+  ctx.beginPath();
+  ctx.ellipse(x(0.5), y(0.30), x(0.32), y(0.20), 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Threads on the base.
+  ctx.strokeStyle = "#000";
+  ctx.lineCap = "round";
+  ctx.lineWidth = Math.max(2, w * 0.022);
+  for (const ty of [0.70, 0.78, 0.86]) {
+    ctx.beginPath();
+    ctx.moveTo(x(0.38), y(ty));
+    ctx.lineTo(x(0.62), y(ty));
+    ctx.stroke();
+  }
+  ctx.globalCompositeOperation = "source-over";
+
+  // Filament, sitting inside the hollow glass.
+  ctx.strokeStyle = "#fff";
+  ctx.lineWidth = Math.max(2, w * 0.018);
+  ctx.beginPath();
+  ctx.moveTo(x(0.43), y(0.46));
+  ctx.lineTo(x(0.43), y(0.34));
+  ctx.lineTo(x(0.47), y(0.26));
+  ctx.lineTo(x(0.50), y(0.34));
+  ctx.lineTo(x(0.53), y(0.26));
+  ctx.lineTo(x(0.57), y(0.34));
+  ctx.lineTo(x(0.57), y(0.46));
+  ctx.stroke();
 }
 
 // --------------------------------------------------------------- point clouds
@@ -138,13 +179,35 @@ function sampleSilhouette(
   draw(mctx, mw, mh);
   const data = mctx.getImageData(0, 0, mw, mh).data;
 
+  const inside = (px: number, py: number) => {
+    if (px < 0 || py < 0 || px >= mw || py >= mh) return false;
+    return data[((py | 0) * mw + (px | 0)) * 4 + 3] >= 128;
+  };
+
+  // How close a point is to any edge of the silhouette — its own outline and
+  // the channels carved into it. Sampling uniformly across the filled area
+  // buries that structure under interior noise: the brain's folds and the
+  // bulb's outline only read once points concentrate on the edges, which is
+  // what makes the reference's shapes legible at a glance.
+  const PROBE = Math.max(3, Math.round(mw * 0.028));
+  const edgeness = (px: number, py: number) => {
+    let outside = 0;
+    for (let a = 0; a < 8; a++) {
+      const angle = (a / 8) * Math.PI * 2;
+      if (!inside(px + Math.cos(angle) * PROBE, py + Math.sin(angle) * PROBE)) outside++;
+    }
+    return outside / 8;
+  };
+
   const out: Vec3[] = [];
   let guard = 0;
-  while (out.length < count && guard < count * 60) {
+  while (out.length < count && guard < count * 120) {
     guard++;
     const px = rand() * mw;
     const py = rand() * mh;
     if (data[(Math.floor(py) * mw + Math.floor(px)) * 4 + 3] < 128) continue;
+    // Interior points still appear, just sparsely, so the shape keeps volume.
+    if (rand() > 0.14 + 0.86 * edgeness(px, py)) continue;
     // Normalised so the longer axis spans [-1, 1].
     const nx = (px / mw - 0.5) * 2;
     const ny = ((py / mh - 0.5) * 2) / aspect;
@@ -192,7 +255,7 @@ function sampleScatter(count: number, radius: number, rand: () => number): Vec3[
 }
 
 // Shape order; a section names one of these in `data-shape`.
-const SHAPE_NAMES: string[] = ["brain", "sphere", "head", "scatter"];
+const SHAPE_NAMES: string[] = ["brain", "sphere", "bulb", "scatter"];
 
 // Deterministic PRNG so the cloud is identical across rebuilds and resizes — a
 // Math.random() cloud would reshuffle on every resize and make the shape jump.
@@ -261,7 +324,7 @@ export default function Constellation() {
       const clouds: Vec3[][] = [
         sampleSilhouette(drawBrain, count, 1.3, 0.42, rand),
         sampleSphere(count, 1),
-        sampleSilhouette(drawHead, count, 0.82, 0.38, rand),
+        sampleSilhouette(drawBulb, count, 0.62, 0.34, rand),
         sampleScatter(count, 1.5, rand),
       ];
 
