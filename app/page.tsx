@@ -17,7 +17,7 @@ export default function Home() {
           layer showing through from behind the content. */}
       <section style={{ paddingTop: 30, paddingBottom: 60 }}>
         <div className="wrap">
-          <div className="two-col" style={{ alignItems: "center", minHeight: "min(78vh, 720px)" }}>
+          <div className="two-col" data-orb="right" data-shape="brain" style={{ alignItems: "center", minHeight: "min(78vh, 720px)" }}>
             <div>
               <Reveal onLoad rotate={0}>
                 <p className="label" style={{ margin: "0 0 24px" }}>{HERO.label}</p>
@@ -56,19 +56,22 @@ export default function Home() {
       {/* What we do */}
       <section id="what-we-do">
         <div className="wrap">
-          <div className="two-col" style={{ marginBottom: 96 }}>
-            <Reveal>
-              <h2 className="h-lg" style={{ margin: 0 }}>What we build.</h2>
-            </Reveal>
-            <Reveal delay={0.5}>
-              <div>
-                <p className="label" style={{ margin: "0 0 18px" }}>Custom software</p>
-                <p className="body-muted" style={{ margin: 0, maxWidth: 520 }}>
-                  Software, webapps, systems and integrations that interconnect complex operations — built around how
-                  your operation actually runs, and delivered by engineers embedded in your business.
-                </p>
-              </div>
-            </Reveal>
+          <div className="two-col" data-orb="left" data-shape="sphere" style={{ marginBottom: 96, minHeight: "min(60vh, 520px)", alignItems: "center" }}>
+            <div aria-hidden />
+            <div>
+              <Reveal>
+                <h2 className="h-lg" style={{ margin: "0 0 30px" }}>What we build.</h2>
+              </Reveal>
+              <Reveal delay={0.5}>
+                <div>
+                  <p className="label" style={{ margin: "0 0 18px" }}>Custom software</p>
+                  <p className="body-muted" style={{ margin: 0, maxWidth: 520 }}>
+                    Software, webapps, systems and integrations that interconnect complex operations — built around how
+                    your operation actually runs, and delivered by engineers embedded in your business.
+                  </p>
+                </div>
+              </Reveal>
+            </div>
           </div>
 
           {CAPABILITIES.map((group, gi) => (
@@ -92,16 +95,19 @@ export default function Home() {
       {/* Agent stack */}
       <section id="agents">
         <div className="wrap">
-          <div className="two-col" style={{ marginBottom: 96 }}>
-            <Reveal>
-              <div>
-                <p className="label" style={{ margin: "0 0 24px" }}>The agent stack</p>
-                <h2 className="h-lg" style={{ margin: 0 }}>One agent per real problem.</h2>
-              </div>
-            </Reveal>
-            <Reveal delay={0.5}>
-              <p className="body-muted" style={{ margin: 0, maxWidth: 520 }}>{AGENTS_INTRO}</p>
-            </Reveal>
+          <div className="two-col" data-orb="right" data-shape="head" style={{ marginBottom: 96, minHeight: "min(60vh, 520px)", alignItems: "center" }}>
+            <div>
+              <Reveal>
+                <div>
+                  <p className="label" style={{ margin: "0 0 24px" }}>The agent stack</p>
+                  <h2 className="h-lg" style={{ margin: "0 0 30px" }}>One agent per real problem.</h2>
+                </div>
+              </Reveal>
+              <Reveal delay={0.5}>
+                <p className="body-muted" style={{ margin: 0, maxWidth: 520 }}>{AGENTS_INTRO}</p>
+              </Reveal>
+            </div>
+            <div aria-hidden />
           </div>
 
           <div>
@@ -123,13 +129,18 @@ export default function Home() {
       {/* Why VALCA */}
       <section>
         <div className="wrap">
-          <Reveal>
-            <h2 className="h-lg" style={{ margin: "0 0 60px", maxWidth: 780 }}>Why {BRAND.name}.</h2>
-          </Reveal>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 60 }}>
-            {STATS.map((stat) => (
-              <StatCounter key={stat.label} value={stat.value} prefix={stat.prefix} suffix={stat.suffix} label={stat.label} />
-            ))}
+          <div className="two-col" data-orb="left" data-shape="scatter" style={{ minHeight: "min(60vh, 520px)", alignItems: "center" }}>
+            <div aria-hidden />
+            <div>
+              <Reveal>
+                <h2 className="h-lg" style={{ margin: "0 0 60px" }}>Why {BRAND.name}.</h2>
+              </Reveal>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: 36 }}>
+                {STATS.map((stat) => (
+                  <StatCounter key={stat.label} value={stat.value} prefix={stat.prefix} suffix={stat.suffix} label={stat.label} />
+                ))}
+              </div>
+            </div>
           </div>
         </div>
       </section>

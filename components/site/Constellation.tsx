@@ -191,8 +191,8 @@ function sampleScatter(count: number, radius: number, rand: () => number): Vec3[
   return out;
 }
 
-// Shape order across the page, mirroring the reference's sequence.
-const SHAPE_COUNT = 4;
+// Shape order; a section names one of these in `data-shape`.
+const SHAPE_NAMES: string[] = ["brain", "sphere", "head", "scatter"];
 
 // Deterministic PRNG so the cloud is identical across rebuilds and resizes — a
 // Math.random() cloud would reshuffle on every resize and make the shape jump.
@@ -222,11 +222,18 @@ export default function Constellation() {
     let raf = 0;
     let w = 0;
     let h = 0;
-    let scale = 1;
-    let originX = 0;
-    let originY = 0;
+    let baseScale = 1;
+    let particleCount = 0;
+    let slots: HTMLElement[] = [];
 
-    function build() {
+    // The field eases towards whatever the active section asks for rather than
+    // snapping, so switching sides reads as the cloud travelling across the
+    // page — the reference's behaviour.
+    const view = { x: 0, y: 0, scale: 1, alpha: 0.12, shape: 0 };
+    let primed = false;
+
+    /** Cheap: canvas size, projection scale and the section slots. */
+    function measure() {
       const dpr = Math.min(window.devicePixelRatio || 1, 2);
       w = window.innerWidth;
       h = window.innerHeight;
@@ -236,15 +243,20 @@ export default function Constellation() {
       canvas!.style.height = `${h}px`;
       ctx!.setTransform(dpr, 0, 0, dpr, 0, 0);
 
-      // On desktop the cloud sits in the right half, clear of the hero copy; on
-      // narrow screens it centres and sits behind the text at lower opacity.
-      const wide = w >= 900;
-      scale = Math.min(w * (wide ? 0.32 : 0.46), h * 0.44);
-      originX = wide ? w * 0.64 : w * 0.5;
-      originY = h * 0.5;
+      baseScale = Math.min(w * (w >= 900 ? 0.32 : 0.46), h * 0.44);
+      slots = Array.from(document.querySelectorAll<HTMLElement>("[data-orb]"));
+      return Math.round(Math.min(3000, (w * h) / 520));
+    }
 
+    /**
+     * Expensive: re-samples every cloud. The clouds are in normalised
+     * coordinates, so a resize only needs this when the particle count itself
+     * changes — otherwise dragging a window would re-sample 12k points per
+     * frame for no visible difference.
+     */
+    function buildClouds(count: number) {
+      particleCount = count;
       const rand = mulberry32(20260817);
-      const count = Math.round(Math.min(3000, (w * h) / 520));
 
       const clouds: Vec3[][] = [
         sampleSilhouette(drawBrain, count, 1.3, 0.42, rand),
@@ -273,25 +285,66 @@ export default function Constellation() {
       buckets = next;
     }
 
-    /** Where we are in the shape sequence, from the page's scroll position. */
-    function shapeProgress() {
-      const doc = document.documentElement;
-      const max = doc.scrollHeight - window.innerHeight;
-      const scrolled = max > 0 ? Math.min(1, Math.max(0, window.scrollY / max)) : 0;
-      return scrolled * (SHAPE_COUNT - 1);
+    /**
+     * Each section that has a free half declares which side the field belongs
+     * on and which shape it should be wearing. The slot nearest the middle of
+     * the viewport wins; with none in view the field falls back to a dim,
+     * centred ambient state so it never fights body copy for legibility.
+     */
+    function target() {
+      const wide = w >= 900;
+      let best: HTMLElement | null = null;
+      let bestDistance = Infinity;
+
+      for (const slot of slots) {
+        const rect = slot.getBoundingClientRect();
+        if (rect.bottom <= 0 || rect.top >= h) continue;
+        const distance = Math.abs(rect.top + rect.height / 2 - h / 2);
+        if (distance < bestDistance) {
+          bestDistance = distance;
+          best = slot;
+        }
+      }
+
+      if (!best) return { x: w * 0.5, y: h * 0.5, scale: baseScale * 1.15, alpha: 0.12, shape: view.shape };
+
+      const rect = best.getBoundingClientRect();
+      const side = best.dataset.orb === "left" ? 0.28 : 0.72;
+      const shape = Math.max(0, SHAPE_NAMES.indexOf(best.dataset.shape ?? "brain"));
+      return {
+        // Below the two-column breakpoint there is no free half, so the field
+        // centres and drops right back — the copy has to win.
+        x: wide ? w * side : w * 0.5,
+        y: Math.min(h * 0.72, Math.max(h * 0.28, rect.top + rect.height / 2)),
+        scale: baseScale * (wide ? 1 : 0.8),
+        alpha: wide ? 1 : 0.35,
+        shape,
+      };
     }
 
     function render(t: number) {
       const c = ctx!;
       c.clearRect(0, 0, w, h);
 
-      const p = shapeProgress();
-      const from = Math.min(SHAPE_COUNT - 1, Math.floor(p));
-      const to = Math.min(SHAPE_COUNT - 1, from + 1);
-      // Each shape holds for the first 40% of its segment, then travels — the
-      // reference reads as distinct shapes with movement between them, not one
-      // continuous smear.
-      const blend = smoothstep(Math.min(1, Math.max(0, (p - from - 0.4) / 0.6)));
+      // Ease every property towards the active section's request. On the very
+      // first frame we snap, so the hero opens already composed.
+      const want = target();
+      const ease = primed ? (reduced ? 1 : 0.08) : 1;
+      primed = true;
+      view.x += (want.x - view.x) * ease;
+      view.y += (want.y - view.y) * ease;
+      view.scale += (want.scale - view.scale) * ease;
+      view.alpha += (want.alpha - view.alpha) * ease;
+      view.shape += (want.shape - view.shape) * ease;
+
+      const originX = view.x;
+      const originY = view.y;
+      const scale = view.scale;
+
+      const p = view.shape;
+      const from = Math.min(SHAPE_NAMES.length - 1, Math.max(0, Math.floor(p)));
+      const to = Math.min(SHAPE_NAMES.length - 1, from + 1);
+      const blend = smoothstep(Math.min(1, Math.max(0, p - from)));
 
       // A full spin would swing the brain and the head profile edge-on, where
       // neither silhouette reads. The reference sways rather than spins, so the
@@ -346,7 +399,7 @@ export default function Constellation() {
         for (let band = 0; band < DEPTH_BANDS; band++) {
           layers.push({
             color: bucket.color,
-            alpha: 0.2 + (band / (DEPTH_BANDS - 1)) * 0.7,
+            alpha: (0.2 + (band / (DEPTH_BANDS - 1)) * 0.7) * view.alpha,
             path: byBand[band],
           });
         }
@@ -381,20 +434,22 @@ export default function Constellation() {
     // a tab opened in the background (cmd-click, "open in new tab") has rAF
     // throttled off entirely, and would otherwise show a blank canvas until it
     // is focused.
-    build();
+    buildClouds(measure());
     render(performance.now());
     if (!reduced) raf = requestAnimationFrame(loop);
 
     // Reduced motion still needs the shape to follow the scroll, it just does
     // so without the spin and drift.
     const onScroll = () => { if (reduced) render(performance.now()); };
+
     window.addEventListener("scroll", onScroll, { passive: true });
 
     let resizeTimer = 0;
     const onResize = () => {
       window.clearTimeout(resizeTimer);
       resizeTimer = window.setTimeout(() => {
-        build();
+        const count = measure();
+        if (count !== particleCount) buildClouds(count);
         render(performance.now());
       }, 150);
     };
