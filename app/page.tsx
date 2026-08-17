@@ -4,16 +4,18 @@ import SiteHeader from "@/components/site/SiteHeader";
 import ContactForm from "@/components/site/ContactForm";
 import ChatWidget from "@/components/site/ChatWidget";
 import Logo from "@/components/site/Logo";
-import { Reveal, Parallax, StatCounter, Faq } from "@/components/site/ui";
+import { Reveal, StatCounter, Faq } from "@/components/site/ui";
 import { AGENTS, AGENTS_INTRO, BRAND, CAPABILITIES, CLOSING, FAQ, FOOTER_BLURB, HERO, NAV, PROCESS, STATS } from "@/lib/content";
 
 export default function Home() {
   return (
     <div className="site">
+      <Constellation />
       <SiteHeader />
 
-      {/* Hero — oversized headline left, particle constellation right */}
-      <section style={{ paddingTop: 30, paddingBottom: 60, overflow: "hidden" }}>
+      {/* Hero — oversized headline left; the right half is the fixed particle
+          layer showing through from behind the content. */}
+      <section style={{ paddingTop: 30, paddingBottom: 60 }}>
         <div className="wrap">
           <div className="two-col" style={{ alignItems: "center", minHeight: "min(78vh, 720px)" }}>
             <div>
@@ -47,10 +49,6 @@ export default function Home() {
                 </ul>
               </Reveal>
             </div>
-
-            <Parallax aria-hidden style={{ height: "min(78vh, 720px)", minHeight: 340 }}>
-              <Constellation />
-            </Parallax>
           </div>
         </div>
       </section>

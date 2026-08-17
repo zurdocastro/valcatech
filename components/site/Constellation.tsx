@@ -1,36 +1,50 @@
 "use client";
 import { useEffect, useRef } from "react";
 
-// The signature brand visual: thousands of tiny outlined triangles forming an
-// organic brain shape on pure black, with an ambient scatter around it.
+// The signature brand visual: thousands of tiny outlined triangles that form a
+// shape and morph between shapes as the page scrolls.
 //
-// The shape is derived by sampling, not hand-placed: an offscreen mask canvas
-// fills a brain silhouette, and particles are rejection-sampled against its
-// alpha channel. That keeps the silhouette editable as one path instead of a
-// coordinate table, and makes the density uniform for free.
+// The reference implementation (dala.craftedbygc.com) instances pyramid meshes
+// whose positions come from a baked EXR texture, driven by a global
+// `sectionProgress` that spans the whole page. The same behaviour is
+// reproduced here with a plain 2D canvas and no 3D dependency:
+//
+//   - every shape is a 3D point cloud of the same length, so morphing between
+//     two of them is a straight lerp
+//   - organic shapes (brain, head) are rejection-sampled from a silhouette
+//     drawn on an offscreen mask, then given volume along z
+//   - the cloud rotates on y and is perspective-projected, so it reads as a
+//     solid object rather than a flat sticker
+//   - particles are batched by colour and depth band, so a frame issues a few
+//     dozen stroke() calls instead of one per triangle
 
 const COLORS = ["#8052FF", "#FFB829", "#15846E", "#B08CFF", "#4C7DFF", "#FF5FD2", "#37D0B0", "#FFFFFF"];
 
-// Vertices are baked at build time (rotation is fixed per particle), so a
-// frame only has to add the wobble offset — no per-particle save/rotate/restore.
-type Particle = { x: number; y: number; vx: number[]; vy: number[]; phase: number; drift: number };
-// Particles are bucketed by (colour x opacity) so a frame issues one stroke()
-// per bucket instead of one per triangle. At ~3000 triangles that is the
-// difference between ~3000 draw calls a frame and ~24 — the naive version
-// pegged a core and froze the tab on a retina display.
-type Bucket = { color: string; alpha: number; phase: number; items: Particle[] };
-const ALPHA_BUCKETS = 3;
+const DEPTH_BANDS = 5; // Far-to-near bands; drive size, alpha and draw order.
+const CAMERA = 3.2; // Perspective distance in shape-space units.
 
-// Brain silhouette in a normalized 0..1 box — a side view: frontal lobe to the
-// left, cerebellum bulging at the lower right, short stem below. The gyri
-// (folds) are erased back out afterwards; without them the sampled particles
+type Vec3 = { x: number; y: number; z: number };
+
+type Particle = {
+  /** One position per shape — index matches SHAPES. */
+  shapes: Vec3[];
+  size: number;
+  spin: number;
+  phase: number;
+};
+
+type Bucket = { color: string; items: Particle[] };
+
+// ---------------------------------------------------------------- silhouettes
+
+// Side view: frontal lobe left, cerebellum bulging at the lower right, short
+// stem below. The gyri are erased back out — without them the sampled points
 // read as a generic blob rather than a brain.
-function drawBrainMask(ctx: CanvasRenderingContext2D, w: number, h: number) {
+function drawBrain(ctx: CanvasRenderingContext2D, w: number, h: number) {
   const x = (v: number) => v * w;
   const y = (v: number) => v * h;
   ctx.fillStyle = "#fff";
 
-  // Cerebrum
   ctx.beginPath();
   ctx.moveTo(x(0.07), y(0.50));
   ctx.bezierCurveTo(x(0.04), y(0.27), x(0.20), y(0.07), x(0.44), y(0.07));
@@ -41,12 +55,10 @@ function drawBrainMask(ctx: CanvasRenderingContext2D, w: number, h: number) {
   ctx.closePath();
   ctx.fill();
 
-  // Cerebellum
   ctx.beginPath();
   ctx.ellipse(x(0.79), y(0.70), x(0.16), y(0.13), 0, 0, Math.PI * 2);
   ctx.fill();
 
-  // Brain stem
   ctx.beginPath();
   ctx.moveTo(x(0.56), y(0.72));
   ctx.bezierCurveTo(x(0.60), y(0.88), x(0.56), y(0.98), x(0.47), y(0.99));
@@ -54,8 +66,6 @@ function drawBrainMask(ctx: CanvasRenderingContext2D, w: number, h: number) {
   ctx.closePath();
   ctx.fill();
 
-  // Gyri — carved back out of the filled shape so the folds show up as
-  // negative space in the particle field.
   ctx.globalCompositeOperation = "destination-out";
   ctx.strokeStyle = "#000";
   ctx.lineCap = "round";
@@ -77,7 +87,6 @@ function drawBrainMask(ctx: CanvasRenderingContext2D, w: number, h: number) {
   fold([[0.33, 0.15], [0.46, 0.24], [0.60, 0.13], [0.74, 0.24], [0.86, 0.18]]);
   fold([[0.62, 0.40], [0.74, 0.31], [0.86, 0.42], [0.92, 0.34]]);
 
-  // The fissure separating cerebrum from cerebellum.
   ctx.lineWidth = Math.max(4, w * 0.022);
   ctx.beginPath();
   ctx.moveTo(x(0.62), y(0.63));
@@ -86,6 +95,118 @@ function drawBrainMask(ctx: CanvasRenderingContext2D, w: number, h: number) {
 
   ctx.globalCompositeOperation = "source-over";
 }
+
+// Human head in profile, facing left — the reference's other hero shape.
+function drawHead(ctx: CanvasRenderingContext2D, w: number, h: number) {
+  const x = (v: number) => v * w;
+  const y = (v: number) => v * h;
+  ctx.fillStyle = "#fff";
+
+  ctx.beginPath();
+  ctx.moveTo(x(0.32), y(0.10));
+  ctx.bezierCurveTo(x(0.62), y(0.02), x(0.86), y(0.20), x(0.84), y(0.46));
+  ctx.bezierCurveTo(x(0.83), y(0.62), x(0.78), y(0.70), x(0.74), y(0.78));
+  ctx.bezierCurveTo(x(0.72), y(0.86), x(0.74), y(0.94), x(0.70), y(0.99));
+  ctx.lineTo(x(0.34), y(0.99));
+  ctx.bezierCurveTo(x(0.33), y(0.88), x(0.28), y(0.82), x(0.24), y(0.76));
+  // Chin, lips, nose, brow — the profile that makes it read as a head.
+  ctx.bezierCurveTo(x(0.17), y(0.72), x(0.13), y(0.66), x(0.16), y(0.62));
+  ctx.bezierCurveTo(x(0.12), y(0.60), x(0.10), y(0.57), x(0.13), y(0.53));
+  ctx.bezierCurveTo(x(0.05), y(0.50), x(0.09), y(0.44), x(0.15), y(0.40));
+  ctx.bezierCurveTo(x(0.18), y(0.30), x(0.20), y(0.16), x(0.32), y(0.10));
+  ctx.closePath();
+  ctx.fill();
+}
+
+// --------------------------------------------------------------- point clouds
+
+/** Rejection-samples `count` points from a silhouette, then gives them volume. */
+function sampleSilhouette(
+  draw: (ctx: CanvasRenderingContext2D, w: number, h: number) => void,
+  count: number,
+  aspect: number,
+  thickness: number,
+  rand: () => number
+): Vec3[] {
+  const mw = 260;
+  const mh = Math.max(1, Math.round(mw / aspect));
+  const mask = document.createElement("canvas");
+  mask.width = mw;
+  mask.height = mh;
+  const mctx = mask.getContext("2d", { willReadFrequently: true });
+  if (!mctx) return [];
+  draw(mctx, mw, mh);
+  const data = mctx.getImageData(0, 0, mw, mh).data;
+
+  const out: Vec3[] = [];
+  let guard = 0;
+  while (out.length < count && guard < count * 60) {
+    guard++;
+    const px = rand() * mw;
+    const py = rand() * mh;
+    if (data[(Math.floor(py) * mw + Math.floor(px)) * 4 + 3] < 128) continue;
+    // Normalised so the longer axis spans [-1, 1].
+    const nx = (px / mw - 0.5) * 2;
+    const ny = ((py / mh - 0.5) * 2) / aspect;
+    // Lens-shaped thickness: full depth mid-shape, tapering towards the
+    // silhouette edge, so a rotated cloud has believable volume rather than
+    // being a flat slab seen edge-on.
+    const edge = Math.max(0, 1 - Math.hypot(nx, ny * aspect));
+    const z = (rand() * 2 - 1) * thickness * Math.sqrt(edge);
+    out.push({ x: nx, y: ny, z });
+  }
+  // Rejection sampling can fall short on a thin silhouette. Every cloud must be
+  // the same length for the morph to stay a straight lerp, so pad by cycling
+  // through what was sampled rather than repeating a single point (which would
+  // stack the whole remainder on one spot).
+  if (out.length === 0) return Array.from({ length: count }, () => ({ x: 0, y: 0, z: 0 }));
+  const sampled = out.length;
+  for (let i = sampled; i < count; i++) out.push(out[i % sampled]);
+  return out;
+}
+
+/** Fibonacci sphere — even coverage, no polar clustering. */
+function sampleSphere(count: number, radius: number): Vec3[] {
+  const out: Vec3[] = [];
+  const golden = Math.PI * (3 - Math.sqrt(5));
+  for (let i = 0; i < count; i++) {
+    const y = count > 1 ? 1 - (i / (count - 1)) * 2 : 0;
+    const r = Math.sqrt(Math.max(0, 1 - y * y));
+    const theta = golden * i;
+    out.push({ x: Math.cos(theta) * r * radius, y: y * radius, z: Math.sin(theta) * r * radius });
+  }
+  return out;
+}
+
+/** Loose ball of points — the dispersed state between the solid shapes. */
+function sampleScatter(count: number, radius: number, rand: () => number): Vec3[] {
+  const out: Vec3[] = [];
+  for (let i = 0; i < count; i++) {
+    const u = rand() * 2 - 1;
+    const theta = rand() * Math.PI * 2;
+    const r = radius * Math.cbrt(rand());
+    const s = Math.sqrt(Math.max(0, 1 - u * u));
+    out.push({ x: Math.cos(theta) * s * r, y: u * r, z: Math.sin(theta) * s * r });
+  }
+  return out;
+}
+
+// Shape order across the page, mirroring the reference's sequence.
+const SHAPE_COUNT = 4;
+
+// Deterministic PRNG so the cloud is identical across rebuilds and resizes — a
+// Math.random() cloud would reshuffle on every resize and make the shape jump.
+function mulberry32(seed: number) {
+  return () => {
+    seed |= 0;
+    seed = (seed + 0x6d2b79f5) | 0;
+    let t = Math.imul(seed ^ (seed >>> 15), 1 | seed);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+const smoothstep = (t: number) => t * t * (3 - 2 * t);
 
 export default function Constellation() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -101,125 +222,152 @@ export default function Constellation() {
     let raf = 0;
     let w = 0;
     let h = 0;
+    let scale = 1;
+    let originX = 0;
+    let originY = 0;
 
     function build() {
-      const parent = canvas!.parentElement!;
       const dpr = Math.min(window.devicePixelRatio || 1, 2);
-      w = parent.clientWidth;
-      h = parent.clientHeight;
+      w = window.innerWidth;
+      h = window.innerHeight;
       canvas!.width = w * dpr;
       canvas!.height = h * dpr;
       canvas!.style.width = `${w}px`;
       canvas!.style.height = `${h}px`;
       ctx!.setTransform(dpr, 0, 0, dpr, 0, 0);
 
-      // The brain occupies a centered box at a fixed 1.3:1 aspect (a squashed
-      // or stretched silhouette stops reading as a brain); the rest of the
-      // canvas gets ambient scatter so the constellation fades into the void
-      // instead of ending at an edge.
-      const ASPECT = 1.3;
-      const bw = Math.min(w * 0.95, h * 0.92 * ASPECT);
-      const bh = bw / ASPECT;
-      const ox = (w - bw) / 2;
-      const oy = (h - bh) / 2;
+      // On desktop the cloud sits in the right half, clear of the hero copy; on
+      // narrow screens it centres and sits behind the text at lower opacity.
+      const wide = w >= 900;
+      scale = Math.min(w * (wide ? 0.32 : 0.46), h * 0.44);
+      originX = wide ? w * 0.64 : w * 0.5;
+      originY = h * 0.5;
 
-      const mask = document.createElement("canvas");
-      mask.width = Math.max(1, Math.round(bw));
-      mask.height = Math.max(1, Math.round(bh));
-      const mctx = mask.getContext("2d");
-      if (!mctx) return;
-      drawBrainMask(mctx, mask.width, mask.height);
-      const data = mctx.getImageData(0, 0, mask.width, mask.height).data;
+      const rand = mulberry32(20260817);
+      const count = Math.round(Math.min(3000, (w * h) / 520));
 
-      // Base alpha per bucket: the brain sits bright, the ambient scatter dim.
-      const shapeAlphas = [0.65, 0.8, 0.95];
-      const ambientAlphas = [0.14, 0.22, 0.3];
-      const next: Bucket[] = [];
+      const clouds: Vec3[][] = [
+        sampleSilhouette(drawBrain, count, 1.3, 0.42, rand),
+        sampleSphere(count, 1),
+        sampleSilhouette(drawHead, count, 0.82, 0.38, rand),
+        sampleScatter(count, 1.5, rand),
+      ];
+
       const index = new Map<string, Bucket>();
-      const bucketFor = (color: string, group: "shape" | "ambient", tier: number) => {
-        const key = `${color}|${group}|${tier}`;
-        let bucket = index.get(key);
+      const next: Bucket[] = [];
+      for (let i = 0; i < count; i++) {
+        const color = COLORS[Math.floor(rand() * COLORS.length)];
+        let bucket = index.get(color);
         if (!bucket) {
-          bucket = {
-            color,
-            alpha: (group === "shape" ? shapeAlphas : ambientAlphas)[tier],
-            phase: Math.random() * Math.PI * 2,
-            items: [],
-          };
-          index.set(key, bucket);
+          bucket = { color, items: [] };
+          index.set(color, bucket);
           next.push(bucket);
         }
-        return bucket;
-      };
-
-      const push = (x: number, y: number, size: number, group: "shape" | "ambient", drift: number) => {
-        const rot = Math.random() * Math.PI * 2;
-        const cos = Math.cos(rot);
-        const sin = Math.sin(rot);
-        const local = [[0, -size], [size * 0.87, size * 0.5], [-size * 0.87, size * 0.5]];
-        bucketFor(COLORS[Math.floor(Math.random() * COLORS.length)], group, Math.floor(Math.random() * ALPHA_BUCKETS)).items.push({
-          x, y,
-          vx: local.map(([lx, ly]) => lx * cos - ly * sin),
-          vy: local.map(([lx, ly]) => lx * sin + ly * cos),
-          phase: Math.random() * Math.PI * 2,
-          drift,
+        bucket.items.push({
+          shapes: clouds.map((c) => c[i]),
+          size: 2 + rand() * 2.4,
+          spin: rand() * Math.PI * 2,
+          phase: rand() * Math.PI * 2,
         });
-      };
-
-      const target = Math.round(Math.min(2600, (bw * bh) / 130));
-      let placed = 0;
-      let guard = 0;
-      while (placed < target && guard < target * 40) {
-        guard++;
-        const px = Math.random() * mask.width;
-        const py = Math.random() * mask.height;
-        if (data[(Math.floor(py) * mask.width + Math.floor(px)) * 4 + 3] < 128) continue;
-        push(ox + px, oy + py, 1.8 + Math.random() * 3, "shape", 0.4 + Math.random() * 1.4);
-        placed++;
       }
-
-      // Ambient field around the shape, at lower density and opacity.
-      const ambient = Math.round(target * 0.22);
-      for (let i = 0; i < ambient; i++) {
-        push(Math.random() * w, Math.random() * h, 1.4 + Math.random() * 2, "ambient", 0.6 + Math.random() * 1.6);
-      }
-
       buckets = next;
+    }
+
+    /** Where we are in the shape sequence, from the page's scroll position. */
+    function shapeProgress() {
+      const doc = document.documentElement;
+      const max = doc.scrollHeight - window.innerHeight;
+      const scrolled = max > 0 ? Math.min(1, Math.max(0, window.scrollY / max)) : 0;
+      return scrolled * (SHAPE_COUNT - 1);
     }
 
     function render(t: number) {
       const c = ctx!;
       c.clearRect(0, 0, w, h);
-      c.lineWidth = 1;
+
+      const p = shapeProgress();
+      const from = Math.min(SHAPE_COUNT - 1, Math.floor(p));
+      const to = Math.min(SHAPE_COUNT - 1, from + 1);
+      // Each shape holds for the first 40% of its segment, then travels — the
+      // reference reads as distinct shapes with movement between them, not one
+      // continuous smear.
+      const blend = smoothstep(Math.min(1, Math.max(0, (p - from - 0.4) / 0.6)));
+
+      // A full spin would swing the brain and the head profile edge-on, where
+      // neither silhouette reads. The reference sways rather than spins, so the
+      // shape stays recognisable: a slow ±20° oscillation, plus a little more
+      // yaw carried by the scroll itself.
+      const spin = reduced ? 0.2 : Math.sin(t / 6000) * 0.35 + p * 0.12;
+      const cosY = Math.cos(spin);
+      const sinY = Math.sin(spin);
+      const tilt = 0.18;
+      const cosX = Math.cos(tilt);
+      const sinX = Math.sin(tilt);
+
+      // Batched by colour, then binned by depth so nearer particles draw last
+      // and read brighter — one stroke() per colour/band pair.
+      const layers: { color: string; alpha: number; path: Path2D }[] = [];
+
       for (const bucket of buckets) {
-        // The whole bucket shares one twinkle phase — at this scale the eye
-        // reads a shimmering field either way, and it keeps the per-frame cost
-        // at one globalAlpha write and one stroke() per bucket.
-        c.globalAlpha = reduced ? bucket.alpha : bucket.alpha * (0.78 + 0.22 * Math.sin(t / 900 + bucket.phase));
-        c.strokeStyle = bucket.color;
-        c.beginPath();
-        for (const p of bucket.items) {
-          const wobble = reduced ? 0 : Math.sin(t / 1400 + p.phase) * p.drift;
-          const x = p.x + wobble;
-          const y = p.y + wobble * 0.6;
-          c.moveTo(x + p.vx[0], y + p.vy[0]);
-          c.lineTo(x + p.vx[1], y + p.vy[1]);
-          c.lineTo(x + p.vx[2], y + p.vy[2]);
-          c.closePath();
+        const byBand: Path2D[] = Array.from({ length: DEPTH_BANDS }, () => new Path2D());
+
+        for (const particle of bucket.items) {
+          const a = particle.shapes[from];
+          const b = particle.shapes[to];
+          const x0 = a.x + (b.x - a.x) * blend;
+          const y0 = a.y + (b.y - a.y) * blend;
+          const z0 = a.z + (b.z - a.z) * blend;
+
+          // Rotate on y, then tilt on x.
+          const rx = x0 * cosY + z0 * sinY;
+          const rz = -x0 * sinY + z0 * cosY;
+          const ry = y0 * cosX - rz * sinX;
+          const rzz = y0 * sinX + rz * cosX;
+
+          // Perspective: nearer points are larger and spread further apart.
+          const depth = CAMERA / (CAMERA + rzz);
+          const drift = reduced ? 0 : Math.sin(t / 1600 + particle.phase) * 1.2;
+          const cx = originX + rx * scale * depth + drift;
+          const cy = originY + ry * scale * depth + drift * 0.6;
+
+          const s = particle.size * depth;
+          const rot = particle.spin + spin * 0.5;
+          const cr = Math.cos(rot);
+          const sr = Math.sin(rot);
+
+          const band = Math.min(DEPTH_BANDS - 1, Math.max(0, Math.floor(((depth - 0.65) / 0.75) * DEPTH_BANDS)));
+          const path = byBand[band];
+          path.moveTo(cx + s * sr, cy - s * cr);
+          path.lineTo(cx + (s * 0.87 * cr - s * 0.5 * sr), cy + (s * 0.87 * sr + s * 0.5 * cr));
+          path.lineTo(cx + (-s * 0.87 * cr - s * 0.5 * sr), cy + (-s * 0.87 * sr + s * 0.5 * cr));
+          path.closePath();
         }
-        c.stroke();
+
+        for (let band = 0; band < DEPTH_BANDS; band++) {
+          layers.push({
+            color: bucket.color,
+            alpha: 0.2 + (band / (DEPTH_BANDS - 1)) * 0.7,
+            path: byBand[band],
+          });
+        }
+      }
+
+      c.lineWidth = 1;
+      layers.sort((l, r) => l.alpha - r.alpha);
+      for (const layer of layers) {
+        c.globalAlpha = layer.alpha;
+        c.strokeStyle = layer.color;
+        c.stroke(layer.path);
       }
       c.globalAlpha = 1;
     }
 
-    // Stroking a few thousand triangles per frame is the whole cost of this
-    // component, so it only runs while the canvas is actually on screen, and
-    // at ~30fps rather than 60 — the drift is slow enough that the halved
-    // frame rate is invisible, and it halves the GPU/CPU burn on a page the
+    // Stroking a few thousand triangles is the whole cost of this component, so
+    // it runs at ~30fps rather than 60 — the drift is slow enough that the
+    // halved frame rate is invisible, and it halves the burn on a page the
     // visitor will scroll straight past.
     const FRAME_MS = 33;
     let last = -Infinity;
-    let visible = true;
 
     function loop(t: number) {
       if (t - last >= FRAME_MS) {
@@ -229,30 +377,42 @@ export default function Constellation() {
       raf = requestAnimationFrame(loop);
     }
 
-    function start() {
-      cancelAnimationFrame(raf);
-      if (reduced) render(performance.now());
-      else raf = requestAnimationFrame(loop);
-    }
-
+    // Paint one frame synchronously rather than waiting on the first rAF:
+    // a tab opened in the background (cmd-click, "open in new tab") has rAF
+    // throttled off entirely, and would otherwise show a blank canvas until it
+    // is focused.
     build();
-    start();
+    render(performance.now());
+    if (!reduced) raf = requestAnimationFrame(loop);
 
-    const io = new IntersectionObserver(([entry]) => {
-      visible = entry.isIntersecting;
-      if (visible) start();
-      else cancelAnimationFrame(raf);
-    });
-    io.observe(canvas);
+    // Reduced motion still needs the shape to follow the scroll, it just does
+    // so without the spin and drift.
+    const onScroll = () => { if (reduced) render(performance.now()); };
+    window.addEventListener("scroll", onScroll, { passive: true });
 
-    const onResize = () => { build(); if (visible) start(); };
+    let resizeTimer = 0;
+    const onResize = () => {
+      window.clearTimeout(resizeTimer);
+      resizeTimer = window.setTimeout(() => {
+        build();
+        render(performance.now());
+      }, 150);
+    };
     window.addEventListener("resize", onResize);
+
     return () => {
       window.removeEventListener("resize", onResize);
-      io.disconnect();
+      window.removeEventListener("scroll", onScroll);
+      window.clearTimeout(resizeTimer);
       cancelAnimationFrame(raf);
     };
   }, []);
 
-  return <canvas ref={canvasRef} aria-hidden style={{ display: "block", width: "100%", height: "100%" }} />;
+  return (
+    <canvas
+      ref={canvasRef}
+      aria-hidden
+      className="constellation"
+    />
+  );
 }

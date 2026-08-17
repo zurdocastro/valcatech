@@ -220,6 +220,26 @@ input, select, textarea, button { font-family: inherit; color: inherit; }
 
 .rule { height: 1px; background: rgba(255,255,255,.10); border: none; margin: 0; }
 
+/* The particle field is a fixed layer behind the whole page — that is what lets
+   the shape morph from section to section rather than only inside the hero. */
+.constellation {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.site > section,
+.site > footer { position: relative; z-index: 1; }
+
+/* Below the two-column breakpoint the cloud centres and sits behind the copy,
+   so it drops back to stay out of the text's way. */
+@media (max-width: 900px) {
+  .constellation { opacity: .4; }
+}
+
 /* GSAP flips this with autoAlpha once the lines are split, so text never
    appears un-split for a frame. Keep it visibility-only: opacity is the
    property the tweens animate. */
