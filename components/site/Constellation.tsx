@@ -11,7 +11,15 @@ import { useEffect, useRef } from "react";
 
 const COLORS = ["#8052FF", "#FFB829", "#15846E", "#B08CFF", "#4C7DFF", "#FF5FD2", "#37D0B0", "#FFFFFF"];
 
-type Particle = { x: number; y: number; size: number; color: string; rot: number; phase: number; drift: number; alpha: number };
+// Vertices are baked at build time (rotation is fixed per particle), so a
+// frame only has to add the wobble offset — no per-particle save/rotate/restore.
+type Particle = { x: number; y: number; vx: number[]; vy: number[]; phase: number; drift: number };
+// Particles are bucketed by (colour x opacity) so a frame issues one stroke()
+// per bucket instead of one per triangle. At ~3000 triangles that is the
+// difference between ~3000 draw calls a frame and ~24 — the naive version
+// pegged a core and froze the tab on a retina display.
+type Bucket = { color: string; alpha: number; phase: number; items: Particle[] };
+const ALPHA_BUCKETS = 3;
 
 // Brain silhouette in a normalized 0..1 box — a side view: frontal lobe to the
 // left, cerebellum bulging at the lower right, short stem below. The gyri
@@ -89,7 +97,7 @@ export default function Constellation() {
     if (!ctx) return;
 
     const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    let particles: Particle[] = [];
+    let buckets: Bucket[] = [];
     let raf = 0;
     let w = 0;
     let h = 0;
@@ -123,65 +131,85 @@ export default function Constellation() {
       drawBrainMask(mctx, mask.width, mask.height);
       const data = mctx.getImageData(0, 0, mask.width, mask.height).data;
 
+      // Base alpha per bucket: the brain sits bright, the ambient scatter dim.
+      const shapeAlphas = [0.65, 0.8, 0.95];
+      const ambientAlphas = [0.14, 0.22, 0.3];
+      const next: Bucket[] = [];
+      const index = new Map<string, Bucket>();
+      const bucketFor = (color: string, group: "shape" | "ambient", tier: number) => {
+        const key = `${color}|${group}|${tier}`;
+        let bucket = index.get(key);
+        if (!bucket) {
+          bucket = {
+            color,
+            alpha: (group === "shape" ? shapeAlphas : ambientAlphas)[tier],
+            phase: Math.random() * Math.PI * 2,
+            items: [],
+          };
+          index.set(key, bucket);
+          next.push(bucket);
+        }
+        return bucket;
+      };
+
+      const push = (x: number, y: number, size: number, group: "shape" | "ambient", drift: number) => {
+        const rot = Math.random() * Math.PI * 2;
+        const cos = Math.cos(rot);
+        const sin = Math.sin(rot);
+        const local = [[0, -size], [size * 0.87, size * 0.5], [-size * 0.87, size * 0.5]];
+        bucketFor(COLORS[Math.floor(Math.random() * COLORS.length)], group, Math.floor(Math.random() * ALPHA_BUCKETS)).items.push({
+          x, y,
+          vx: local.map(([lx, ly]) => lx * cos - ly * sin),
+          vy: local.map(([lx, ly]) => lx * sin + ly * cos),
+          phase: Math.random() * Math.PI * 2,
+          drift,
+        });
+      };
+
       const target = Math.round(Math.min(2600, (bw * bh) / 130));
-      const next: Particle[] = [];
+      let placed = 0;
       let guard = 0;
-      while (next.length < target && guard < target * 40) {
+      while (placed < target && guard < target * 40) {
         guard++;
         const px = Math.random() * mask.width;
         const py = Math.random() * mask.height;
-        const alpha = data[(Math.floor(py) * mask.width + Math.floor(px)) * 4 + 3];
-        if (alpha < 128) continue;
-        next.push({
-          x: ox + px,
-          y: oy + py,
-          size: 1.8 + Math.random() * 3,
-          color: COLORS[Math.floor(Math.random() * COLORS.length)],
-          rot: Math.random() * Math.PI * 2,
-          phase: Math.random() * Math.PI * 2,
-          drift: 0.4 + Math.random() * 1.4,
-          alpha: 0.6 + Math.random() * 0.4,
-        });
+        if (data[(Math.floor(py) * mask.width + Math.floor(px)) * 4 + 3] < 128) continue;
+        push(ox + px, oy + py, 1.8 + Math.random() * 3, "shape", 0.4 + Math.random() * 1.4);
+        placed++;
       }
 
       // Ambient field around the shape, at lower density and opacity.
       const ambient = Math.round(target * 0.22);
       for (let i = 0; i < ambient; i++) {
-        next.push({
-          x: Math.random() * w,
-          y: Math.random() * h,
-          size: 1.4 + Math.random() * 2,
-          color: COLORS[Math.floor(Math.random() * COLORS.length)],
-          rot: Math.random() * Math.PI * 2,
-          phase: Math.random() * Math.PI * 2,
-          drift: 0.6 + Math.random() * 1.6,
-          alpha: 0.12 + Math.random() * 0.22,
-        });
+        push(Math.random() * w, Math.random() * h, 1.4 + Math.random() * 2, "ambient", 0.6 + Math.random() * 1.6);
       }
-      particles = next;
+
+      buckets = next;
     }
 
     function render(t: number) {
-      ctx!.clearRect(0, 0, w, h);
-      for (const p of particles) {
-        const wobble = reduced ? 0 : Math.sin(t / 1400 + p.phase) * p.drift;
-        const twinkle = reduced ? 1 : 0.75 + 0.25 * Math.sin(t / 900 + p.phase * 2);
-        const s = p.size;
-        ctx!.save();
-        ctx!.translate(p.x + wobble, p.y + wobble * 0.6);
-        ctx!.rotate(p.rot);
-        ctx!.globalAlpha = p.alpha * twinkle;
-        ctx!.strokeStyle = p.color;
-        ctx!.lineWidth = 1;
-        ctx!.beginPath();
-        ctx!.moveTo(0, -s);
-        ctx!.lineTo(s * 0.87, s * 0.5);
-        ctx!.lineTo(-s * 0.87, s * 0.5);
-        ctx!.closePath();
-        ctx!.stroke();
-        ctx!.restore();
+      const c = ctx!;
+      c.clearRect(0, 0, w, h);
+      c.lineWidth = 1;
+      for (const bucket of buckets) {
+        // The whole bucket shares one twinkle phase — at this scale the eye
+        // reads a shimmering field either way, and it keeps the per-frame cost
+        // at one globalAlpha write and one stroke() per bucket.
+        c.globalAlpha = reduced ? bucket.alpha : bucket.alpha * (0.78 + 0.22 * Math.sin(t / 900 + bucket.phase));
+        c.strokeStyle = bucket.color;
+        c.beginPath();
+        for (const p of bucket.items) {
+          const wobble = reduced ? 0 : Math.sin(t / 1400 + p.phase) * p.drift;
+          const x = p.x + wobble;
+          const y = p.y + wobble * 0.6;
+          c.moveTo(x + p.vx[0], y + p.vy[0]);
+          c.lineTo(x + p.vx[1], y + p.vy[1]);
+          c.lineTo(x + p.vx[2], y + p.vy[2]);
+          c.closePath();
+        }
+        c.stroke();
       }
-      ctx!.globalAlpha = 1;
+      c.globalAlpha = 1;
     }
 
     // Stroking a few thousand triangles per frame is the whole cost of this

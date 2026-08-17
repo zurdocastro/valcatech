@@ -170,7 +170,6 @@ input, select, textarea, button { font-family: inherit; color: inherit; }
   letter-spacing: 0.025em;
   text-transform: uppercase;
   cursor: pointer;
-  transition: opacity .18s ease, transform .18s ease;
 }
 .pill:hover { opacity: .86; transform: translateY(-1px); }
 .pill:disabled { opacity: .5; cursor: not-allowed; transform: none; }
@@ -185,7 +184,6 @@ input, select, textarea, button { font-family: inherit; color: inherit; }
   font-weight: 400;
   letter-spacing: 0.025em;
   cursor: pointer;
-  transition: color .18s ease;
 }
 .ghost:hover { color: var(--bone-white); }
 
@@ -195,7 +193,6 @@ input, select, textarea, button { font-family: inherit; color: inherit; }
   letter-spacing: 0.025em;
   text-transform: uppercase;
   color: var(--ash-gray);
-  transition: color .18s ease;
 }
 .nav-link:hover { color: var(--bone-white); }
 
@@ -236,7 +233,7 @@ input, select, textarea, button { font-family: inherit; color: inherit; }
 .site a,
 .site button { transition: color .5s cubic-bezier(.5, 1, .89, 1); }
 
-.pill { transition: transform .3s cubic-bezier(.25, 1, .5, 1), opacity .3s cubic-bezier(.25, 1, .5, 1); }
+.site .pill { transition: transform .3s cubic-bezier(.25, 1, .5, 1), opacity .3s cubic-bezier(.25, 1, .5, 1); }
 
 .faq-plus { transition: transform .3s cubic-bezier(.25, 1, .5, 1); }
 
