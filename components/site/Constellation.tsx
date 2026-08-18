@@ -93,109 +93,100 @@ function fbm(x: number, y: number) {
   return value;
 }
 
-// Brain, seen from the front-three-quarter — a broad rounded mass with a long
-// stem descending from the middle of its underside. Earlier passes drew a
-// lateral profile with the cerebellum bulging at the lower right; that is a
-// different view of a brain and no amount of surface detail was going to make
-// it match.
+// Brain, built from its folds rather than from an outline.
 //
-// The silhouette is a HEIGHT MAP: white at the crown of a gyrus, dark at the
-// floor of a sulcus, which the sampler turns into displacement along z. The
-// folds are generated rather than drawn — a sine field through domain-warped
-// noise — but at a low base frequency, because the reference's gyri are a
-// handful of large sweeping lobes, not fine texture.
+// Every earlier attempt drew a smooth bezier oval and then decorated it, and
+// every one of them read as a blob. A real brain has a SCALLOPED perimeter —
+// the gyri bulge out at the edge, so the outline is bumpy, and a smooth oval
+// can never look like one no matter what texture goes inside it. Drawing the
+// gyri as thick worms and letting their union be the silhouette produces the
+// bumpy edge and the fold structure from one construction, which is how brain
+// illustrations are actually made.
+//
+// Two passes per worm: a wide dim one lays the body, a narrow bright one puts a
+// crest down the middle. Luminance is height, so the crest rises and the seam
+// between neighbouring worms sinks.
 function drawBrain(ctx: CanvasRenderingContext2D, w: number, h: number) {
   const x = (v: number) => v * w;
   const y = (v: number) => v * h;
-
-  ctx.fillStyle = "#fff";
-
-  // Cerebral mass.
-  ctx.beginPath();
-  ctx.moveTo(x(0.03), y(0.42));
-  ctx.bezierCurveTo(x(0.05), y(0.18), x(0.22), y(0.04), x(0.45), y(0.03));
-  ctx.bezierCurveTo(x(0.68), y(0.01), x(0.93), y(0.12), x(0.96), y(0.32));
-  ctx.bezierCurveTo(x(0.99), y(0.47), x(0.95), y(0.60), x(0.86), y(0.66));
-  ctx.bezierCurveTo(x(0.79), y(0.72), x(0.66), y(0.75), x(0.55), y(0.74));
-  ctx.bezierCurveTo(x(0.42), y(0.76), x(0.26), y(0.74), x(0.16), y(0.66));
-  ctx.bezierCurveTo(x(0.07), y(0.60), x(0.02), y(0.52), x(0.03), y(0.42));
-  ctx.closePath();
-  ctx.fill();
-
-  // Stem, dropping from the middle of the underside.
-  ctx.beginPath();
-  ctx.moveTo(x(0.500), y(0.68));
-  ctx.lineTo(x(0.585), y(0.68));
-  ctx.bezierCurveTo(x(0.583), y(0.84), x(0.578), y(0.94), x(0.570), y(1.0));
-  ctx.lineTo(x(0.508), y(1.0));
-  ctx.bezierCurveTo(x(0.503), y(0.94), x(0.500), y(0.84), x(0.500), y(0.68));
-  ctx.closePath();
-  ctx.fill();
-
-  const img = ctx.getImageData(0, 0, w, h);
-  const px = img.data;
-
-  for (let j = 0; j < h; j++) {
-    for (let i = 0; i < w; i++) {
-      const o = (j * w + i) * 4;
-      if (px[o + 3] < 128) continue;
-      const u = i / w;
-      const v = j / h;
-
-      // Low base frequency, heavy warp: a few large lobes that wander and fold
-      // back, matching the scale of the reference's gyri.
-      const wx = u * 7.5 + 8 * fbm(u * 2.0, v * 2.0);
-      const wy = v * 7.5 + 8 * fbm(u * 2.0 + 11.3, v * 2.0 + 7.7);
-      const ridge = Math.abs(Math.sin(wx * 0.85 + wy * 0.55));
-      const height = 0.14 + 0.86 * Math.pow(ridge, 0.5);
-
-      const level = Math.round(Math.max(0, Math.min(1, height)) * 255);
-      px[o] = level;
-      px[o + 1] = level;
-      px[o + 2] = level;
-    }
-  }
-  ctx.putImageData(img, 0, 0);
-
-  // The longitudinal fissure between the hemispheres, the one landmark this
-  // view really needs.
-  const hasBlur = "filter" in ctx;
-  if (hasBlur) ctx.filter = `blur(${Math.max(1.5, w * 0.010)}px)`;
-  ctx.globalCompositeOperation = "source-atop";
   ctx.lineCap = "round";
-  ctx.strokeStyle = "rgb(8,8,8)";
-  ctx.lineWidth = Math.max(3, w * 0.022);
-  ctx.beginPath();
-  ctx.moveTo(x(0.50), y(0.03));
-  ctx.bezierCurveTo(x(0.53), y(0.22), x(0.50), y(0.44), x(0.53), y(0.68));
-  ctx.stroke();
+  ctx.lineJoin = "round";
+
+  const worm = (pts: number[][], width: number, shade: string) => {
+    ctx.strokeStyle = shade;
+    ctx.lineWidth = w * width;
+    ctx.beginPath();
+    ctx.moveTo(x(pts[0][0]), y(pts[0][1]));
+    for (let i = 1; i < pts.length - 1; i++) {
+      const mx = (pts[i][0] + pts[i + 1][0]) / 2;
+      const my = (pts[i][1] + pts[i + 1][1]) / 2;
+      ctx.quadraticCurveTo(x(pts[i][0]), y(pts[i][1]), x(mx), y(my));
+    }
+    ctx.lineTo(x(pts[pts.length - 1][0]), y(pts[pts.length - 1][1]));
+    ctx.stroke();
+  };
+
+  // Cerebral gyri, sweeping front to back and stacking down the lobes.
+  const GYRI = [
+    [[0.09, 0.44], [0.14, 0.26], [0.28, 0.15], [0.47, 0.12], [0.66, 0.15], [0.80, 0.23], [0.88, 0.36]],
+    [[0.11, 0.53], [0.19, 0.34], [0.33, 0.25], [0.50, 0.22], [0.66, 0.26], [0.78, 0.34], [0.86, 0.46]],
+    [[0.15, 0.61], [0.24, 0.45], [0.38, 0.36], [0.53, 0.34], [0.67, 0.38], [0.77, 0.47]],
+    [[0.19, 0.67], [0.31, 0.55], [0.45, 0.49], [0.59, 0.49], [0.70, 0.55]],
+    [[0.23, 0.72], [0.35, 0.67], [0.48, 0.65], [0.59, 0.67]],
+    [[0.09, 0.46], [0.09, 0.58], [0.15, 0.66]],
+    [[0.86, 0.40], [0.89, 0.50], [0.83, 0.58]],
+  ];
+  // Cerebellum: tighter, near-parallel folia.
+  const FOLIA = [
+    [[0.70, 0.70], [0.80, 0.68], [0.90, 0.70]],
+    [[0.70, 0.76], [0.80, 0.74], [0.90, 0.76]],
+    [[0.72, 0.82], [0.81, 0.80], [0.89, 0.82]],
+  ];
+  const STEM = [[0.60, 0.66], [0.605, 0.79], [0.593, 0.93]];
+
+  for (const g of GYRI) worm(g, 0.105, "rgb(64,64,64)");
+  for (const g of FOLIA) worm(g, 0.062, "rgb(64,64,64)");
+  worm(STEM, 0.062, "rgb(64,64,64)");
+
+  const hasBlur = "filter" in ctx;
+  if (hasBlur) ctx.filter = `blur(${Math.max(1, w * 0.006)}px)`;
+  for (const g of GYRI) worm(g, 0.048, "rgb(255,255,255)");
+  for (const g of FOLIA) worm(g, 0.026, "rgb(238,238,238)");
+  worm(STEM, 0.028, "rgb(205,205,205)");
   if (hasBlur) ctx.filter = "none";
-  ctx.globalCompositeOperation = "source-over";
 }
 
-// Lightbulb: a smooth teardrop, tilted, and nothing else. The reference's bulb
-// carries no thread, no filament and no collar — the previous pass added all
-// three and they were the reason it never matched. Its whole character is the
-// gradient running along the long axis, which the tint channel supplies.
+// Lightbulb: a circle, a waisted neck, a threaded barrel. The three parts a
+// bulb is recognised by, in the proportions it is recognised at — an earlier
+// pass smoothed all three into one teardrop and it stopped reading as a bulb.
 function drawBulb(ctx: CanvasRenderingContext2D, w: number, h: number) {
   const x = (v: number) => v * w;
   const y = (v: number) => v * h;
-
   ctx.fillStyle = "#fff";
+
+  // Glass envelope.
   ctx.beginPath();
-  // Round head at the upper left, narrowing along a smooth waist into a
-  // rounded base at the lower right.
-  ctx.moveTo(x(0.40), y(0.06));
-  ctx.bezierCurveTo(x(0.68), y(0.06), x(0.86), y(0.24), x(0.84), y(0.44));
-  ctx.bezierCurveTo(x(0.82), y(0.60), x(0.74), y(0.66), x(0.76), y(0.78));
-  ctx.bezierCurveTo(x(0.78), y(0.92), x(0.68), y(0.99), x(0.55), y(0.98));
-  ctx.bezierCurveTo(x(0.43), y(0.97), x(0.37), y(0.88), x(0.38), y(0.76));
-  ctx.bezierCurveTo(x(0.39), y(0.64), x(0.30), y(0.60), x(0.22), y(0.52));
-  ctx.bezierCurveTo(x(0.10), y(0.40), x(0.14), y(0.10), x(0.40), y(0.06));
+  ctx.arc(x(0.5), y(0.30), x(0.30), 0, Math.PI * 2);
+  ctx.fill();
+
+  // Neck, with the concave shoulders that make the waist read.
+  ctx.beginPath();
+  ctx.moveTo(x(0.26), y(0.44));
+  ctx.bezierCurveTo(x(0.33), y(0.52), x(0.36), y(0.55), x(0.36), y(0.61));
+  ctx.lineTo(x(0.64), y(0.61));
+  ctx.bezierCurveTo(x(0.64), y(0.55), x(0.67), y(0.52), x(0.74), y(0.44));
   ctx.closePath();
   ctx.fill();
 
-  // A single soft dome so the body has volume. No surface detail at all.
+  // Screw base.
+  ctx.beginPath();
+  ctx.moveTo(x(0.36), y(0.61));
+  ctx.lineTo(x(0.64), y(0.61));
+  ctx.lineTo(x(0.63), y(0.88));
+  ctx.bezierCurveTo(x(0.62), y(0.96), x(0.38), y(0.96), x(0.37), y(0.88));
+  ctx.closePath();
+  ctx.fill();
+
   const img = ctx.getImageData(0, 0, w, h);
   const px = img.data;
   for (let j = 0; j < h; j++) {
@@ -204,8 +195,17 @@ function drawBulb(ctx: CanvasRenderingContext2D, w: number, h: number) {
       if (px[o + 3] < 128) continue;
       const u = i / w;
       const v = j / h;
-      const dome = Math.max(0, 1 - Math.hypot((u - 0.5) / 0.46, (v - 0.5) / 0.5));
-      const level = Math.round((0.45 + 0.55 * Math.sqrt(dome)) * 255);
+      let height: number;
+      if (v > 0.61) {
+        // Helical thread: skewed by u so the ridge climbs the barrel.
+        height = 0.30 + 0.70 * (0.5 + 0.5 * Math.sin((v - 0.61) * 120 + (u - 0.5) * 8));
+      } else if (v > 0.44) {
+        height = 0.55;
+      } else {
+        const dome = Math.max(0, 1 - Math.hypot((u - 0.5) / 0.31, (v - 0.30) / 0.31));
+        height = 0.40 + 0.60 * Math.sqrt(dome);
+      }
+      const level = Math.round(Math.max(0, Math.min(1, height)) * 255);
       px[o] = level;
       px[o + 1] = level;
       px[o + 2] = level;
@@ -460,14 +460,14 @@ export default function Constellation() {
       const clouds: Cloud[] = [
         // Gold rides the crest of every fold, white fills the faces between
         // them, violet sinks into the valleys — the reference's brain read.
-        sampleSilhouette(drawBrain, count, 1.1, 0.40, (_u, _v, height) =>
+        sampleSilhouette(drawBrain, count, 1.25, 0.34, (_u, _v, height) =>
           height > 0.86 ? 0.02 : height > 0.55 ? 0.24 + (1 - height) * 0.4 : 0.62 + (0.55 - height) * 0.5
         ),
         sampleSphere(count, 1),
         // One smooth sweep down the bulb's long axis: gold at the head,
         // through white, into violet, blue and teal at the base.
-        sampleSilhouette(drawBulb, count, 0.66, 0.38, (u, v) =>
-          Math.min(1, Math.max(0, (u * 0.45 + v * 0.85 - 0.10) / 0.95))
+        sampleSilhouette(drawBulb, count, 0.60, 0.34, (_u, v) =>
+          Math.min(1, Math.max(0, (v - 0.04) / 0.92))
         ),
         sampleScatter(count, 1.5, rand),
       ];
