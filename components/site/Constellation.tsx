@@ -93,45 +93,50 @@ function fbm(x: number, y: number) {
   return value;
 }
 
-// Brain.
+// Brain, lateral view: frontal lobe left, occipital right, temporal lobe along
+// the underside, cerebellum at the lower right, stem descending.
 //
-// Two failed constructions taught this one. A smooth bezier oval with texture
-// inside reads as a blob, because a brain's perimeter is not smooth. But
-// letting thick worms BE the silhouette went too far the other way — the folds
-// protruded so far that it read as a bundle of tubes.
+// Three constructions were needed to get here. A smooth bezier oval with
+// texture inside reads as a blob, because a brain's perimeter is not smooth.
+// Letting thick worms BE the silhouette went too far the other way and read as
+// a bundle of tubes. This keeps a coherent envelope, paints broad gyri ridges
+// only inside it, and notches the perimeter where sulci run out to the edge —
+// which is where the scalloped outline actually comes from.
 //
-// What works is both: a coherent envelope carrying the recognisable outline,
-// broad gyri ridges painted only inside it, and the perimeter notched where
-// sulci run out to the edge — which is where a brain's scalloped outline
-// actually comes from. Luminance is height, so the ridges rise and the seams
-// between them sink.
+// Luminance is height, which the sampler turns into displacement along z and
+// into the interior's colour. The bright rim is not drawn here; it comes from
+// the distance-to-edge term the sampler computes.
 function drawBrain(ctx: CanvasRenderingContext2D, w: number, h: number) {
   const x = (v: number) => v * w;
   const y = (v: number) => v * h;
 
-  // Envelope, mid-grey: the floor every ridge rises from.
   ctx.fillStyle = "rgb(120,120,120)";
+
+  // Cerebrum: high dome, frontal bulge left, occipital right, temporal lobe
+  // dipping along the underside.
   ctx.beginPath();
-  ctx.moveTo(x(0.06), y(0.46));
-  ctx.bezierCurveTo(x(0.05), y(0.24), x(0.22), y(0.08), x(0.45), y(0.07));
-  ctx.bezierCurveTo(x(0.66), y(0.04), x(0.88), y(0.14), x(0.91), y(0.33));
-  ctx.bezierCurveTo(x(0.95), y(0.46), x(0.88), y(0.55), x(0.78), y(0.58));
-  ctx.bezierCurveTo(x(0.76), y(0.66), x(0.70), y(0.72), x(0.60), y(0.73));
-  ctx.bezierCurveTo(x(0.48), y(0.76), x(0.30), y(0.74), x(0.19), y(0.66));
-  ctx.bezierCurveTo(x(0.10), y(0.60), x(0.06), y(0.55), x(0.06), y(0.46));
+  ctx.moveTo(x(0.03), y(0.44));
+  ctx.bezierCurveTo(x(0.03), y(0.22), x(0.20), y(0.06), x(0.44), y(0.05));
+  ctx.bezierCurveTo(x(0.68), y(0.03), x(0.92), y(0.13), x(0.96), y(0.34));
+  ctx.bezierCurveTo(x(0.99), y(0.48), x(0.94), y(0.60), x(0.86), y(0.64));
+  ctx.bezierCurveTo(x(0.82), y(0.74), x(0.72), y(0.80), x(0.60), y(0.80));
+  ctx.bezierCurveTo(x(0.46), y(0.83), x(0.28), y(0.79), x(0.16), y(0.68));
+  ctx.bezierCurveTo(x(0.07), y(0.61), x(0.03), y(0.54), x(0.03), y(0.44));
   ctx.closePath();
   ctx.fill();
 
+  // Cerebellum.
   ctx.beginPath();
-  ctx.ellipse(x(0.76), y(0.70), x(0.15), y(0.11), 0, 0, Math.PI * 2);
+  ctx.ellipse(x(0.76), y(0.74), x(0.15), y(0.11), 0, 0, Math.PI * 2);
   ctx.fill();
 
+  // Stem.
   ctx.beginPath();
-  ctx.moveTo(x(0.545), y(0.70));
-  ctx.lineTo(x(0.615), y(0.70));
-  ctx.bezierCurveTo(x(0.612), y(0.84), x(0.605), y(0.93), x(0.596), y(0.98));
-  ctx.lineTo(x(0.552), y(0.98));
-  ctx.bezierCurveTo(x(0.546), y(0.93), x(0.545), y(0.84), x(0.545), y(0.70));
+  ctx.moveTo(x(0.48), y(0.76));
+  ctx.lineTo(x(0.56), y(0.76));
+  ctx.bezierCurveTo(x(0.558), y(0.88), x(0.551), y(0.95), x(0.543), y(0.99));
+  ctx.lineTo(x(0.492), y(0.99));
+  ctx.bezierCurveTo(x(0.485), y(0.95), x(0.480), y(0.88), x(0.48), y(0.76));
   ctx.closePath();
   ctx.fill();
 
@@ -156,47 +161,47 @@ function drawBrain(ctx: CanvasRenderingContext2D, w: number, h: number) {
   };
 
   const GYRI = [
-    [[0.08, 0.40], [0.15, 0.22], [0.31, 0.13], [0.50, 0.11], [0.68, 0.15], [0.83, 0.24], [0.90, 0.36]],
-    [[0.08, 0.52], [0.17, 0.32], [0.33, 0.22], [0.51, 0.20], [0.68, 0.25], [0.81, 0.34], [0.88, 0.45]],
-    [[0.12, 0.62], [0.22, 0.44], [0.37, 0.33], [0.54, 0.31], [0.69, 0.36], [0.80, 0.46]],
-    [[0.18, 0.69], [0.30, 0.55], [0.45, 0.46], [0.60, 0.45], [0.72, 0.52]],
-    [[0.24, 0.73], [0.37, 0.66], [0.50, 0.62], [0.62, 0.63]],
-    [[0.07, 0.44], [0.06, 0.56], [0.13, 0.66]],
-    [[0.88, 0.38], [0.92, 0.47], [0.85, 0.55]],
+    [[0.05, 0.38], [0.12, 0.19], [0.29, 0.10], [0.49, 0.09], [0.69, 0.13], [0.86, 0.23], [0.94, 0.36]],
+    [[0.05, 0.50], [0.14, 0.29], [0.31, 0.19], [0.51, 0.17], [0.70, 0.23], [0.85, 0.33], [0.92, 0.46]],
+    [[0.09, 0.61], [0.19, 0.42], [0.36, 0.30], [0.55, 0.28], [0.72, 0.34], [0.84, 0.46]],
+    [[0.14, 0.70], [0.27, 0.54], [0.44, 0.43], [0.62, 0.42], [0.76, 0.50]],
+    [[0.20, 0.77], [0.34, 0.68], [0.49, 0.62], [0.63, 0.63], [0.73, 0.68]],
+    [[0.04, 0.42], [0.03, 0.55], [0.11, 0.67]],
+    [[0.93, 0.38], [0.97, 0.48], [0.90, 0.58]],
   ];
   const FOLIA = [
-    [[0.66, 0.68], [0.76, 0.66], [0.87, 0.68]],
-    [[0.66, 0.73], [0.76, 0.71], [0.87, 0.73]],
-    [[0.68, 0.78], [0.77, 0.76], [0.86, 0.78]],
+    [[0.65, 0.72], [0.76, 0.70], [0.88, 0.72]],
+    [[0.65, 0.77], [0.76, 0.75], [0.88, 0.77]],
+    [[0.67, 0.82], [0.77, 0.80], [0.86, 0.82]],
   ];
 
   const hasBlur = "filter" in ctx;
   if (hasBlur) ctx.filter = `blur(${Math.max(1, w * 0.007)}px)`;
-  for (const g of GYRI) worm(g, 0.052, "rgb(255,255,255)");
-  for (const f of FOLIA) worm(f, 0.020, "rgb(235,235,235)");
-  worm([[0.58, 0.72], [0.583, 0.85], [0.575, 0.96]], 0.026, "rgb(200,200,200)");
+  for (const g of GYRI) worm(g, 0.050, "rgb(255,255,255)");
+  for (const f of FOLIA) worm(f, 0.019, "rgb(235,235,235)");
+  worm([[0.52, 0.78], [0.523, 0.88], [0.517, 0.97]], 0.024, "rgb(205,205,205)");
   if (hasBlur) ctx.filter = "none";
 
-  // Perimeter notches.
+  // Perimeter notches — the scalloping where a sulcus meets the outline.
   ctx.globalCompositeOperation = "destination-out";
   ctx.strokeStyle = "#000";
-  ctx.lineWidth = w * 0.030;
+  ctx.lineWidth = w * 0.026;
   const notch = (a: number[], b: number[]) => {
     ctx.beginPath();
     ctx.moveTo(x(a[0]), y(a[1]));
     ctx.lineTo(x(b[0]), y(b[1]));
     ctx.stroke();
   };
-  notch([0.24, 0.02], [0.27, 0.13]);
-  notch([0.42, 0.00], [0.43, 0.12]);
-  notch([0.60, 0.01], [0.58, 0.12]);
-  notch([0.76, 0.05], [0.73, 0.16]);
-  notch([0.02, 0.34], [0.13, 0.36]);
-  notch([0.02, 0.52], [0.13, 0.50]);
-  notch([0.96, 0.28], [0.86, 0.30]);
-  notch([0.97, 0.44], [0.87, 0.43]);
-  notch([0.30, 0.80], [0.32, 0.69]);
-  notch([0.46, 0.82], [0.46, 0.71]);
+  notch([0.22, 0.00], [0.25, 0.11]);
+  notch([0.40, -0.02], [0.41, 0.10]);
+  notch([0.58, -0.01], [0.56, 0.10]);
+  notch([0.76, 0.03], [0.73, 0.14]);
+  notch([-0.01, 0.32], [0.10, 0.34]);
+  notch([-0.01, 0.52], [0.10, 0.50]);
+  notch([1.01, 0.28], [0.90, 0.30]);
+  notch([1.01, 0.46], [0.90, 0.45]);
+  notch([0.28, 0.86], [0.30, 0.75]);
+  notch([0.44, 0.88], [0.44, 0.77]);
   ctx.globalCompositeOperation = "source-over";
 }
 
@@ -275,8 +280,11 @@ function sampleSilhouette(
   count: number,
   aspect: number,
   thickness: number,
-  /** Hue for this point, 0..1 into RAMP. Owned by the shape, not the light. */
-  tintOf: (u: number, v: number, height: number) => number
+  /**
+   * Hue for this point, 0..1 into RAMP. Owned by the shape, not the light.
+   * `rim` is 1 hard against the silhouette edge and falls to 0 inside.
+   */
+  tintOf: (u: number, v: number, height: number, rim: number) => number
 ): Cloud {
   const mw = 320;
   const mh = Math.max(1, Math.round(mw / aspect));
@@ -295,6 +303,24 @@ function sampleSilhouette(
   // groove. Shapes with no relief are drawn in flat white and simply come back
   // as 1 everywhere.
   const height = (px: number, py: number) => data[(((py | 0) * mw + (px | 0)) * 4)] / 255;
+
+  // Approximate distance to the silhouette edge, by probing outward in rings
+  // until one lands outside. The reference's brain is defined by a bright rim
+  // hugging its whole contour with a quieter interior — without a distance
+  // term there is nothing to hang that on, which is why earlier passes spread
+  // the accent over the entire surface instead.
+  const RIM_PX = Math.max(4, Math.round(mw * 0.045));
+  const rimOf = (px: number, py: number) => {
+    for (let r = 2; r <= RIM_PX; r += 2) {
+      for (let a = 0; a < 8; a++) {
+        const angle = (a / 8) * Math.PI * 2;
+        if (!inside(px + Math.cos(angle) * r, py + Math.sin(angle) * r)) {
+          return 1 - (r - 2) / RIM_PX;
+        }
+      }
+    }
+    return 0;
+  };
 
   const walk = (spacing: number, collect: ((px: number, py: number, gx: number, gy: number) => void) | null) => {
     let hits = 0;
@@ -359,7 +385,7 @@ function sampleSilhouette(
     let vz = (z / rl) * 0.55 + bz * 0.45;
     const vl = Math.hypot(vx, vy, vz) || 1;
     nrm.push({ x: vx / vl, y: vy / vl, z: vz / vl });
-    tint.push(Math.max(0, Math.min(1, tintOf(px / mw, py / mh, height(px, py)))));
+    tint.push(Math.max(0, Math.min(1, tintOf(px / mw, py / mh, height(px, py), rimOf(px, py)))));
   });
 
   if (pos.length === 0) return flatCloud(count);
@@ -502,15 +528,17 @@ export default function Constellation() {
       const rand = mulberry32(20260817);
 
       const clouds: Cloud[] = [
-        // Gold rides the crest of every fold, white fills the faces between
-        // them, violet sinks into the valleys — the reference's brain read.
-        sampleSilhouette(drawBrain, count, 1.28, 0.34, (_u, _v, height) =>
-          height > 0.86 ? 0.02 : height > 0.55 ? 0.24 + (1 - height) * 0.4 : 0.62 + (0.55 - height) * 0.5
+        // Gold is a RIM, not a surface treatment: it hugs the whole contour and
+        // the interior stays quieter, in whites, violets and teals picked out by
+        // the fold relief. That contrast is what makes the reference's brain
+        // read as a brain at a glance.
+        sampleSilhouette(drawBrain, count, 1.35, 0.34, (_u, _v, height, rim) =>
+          rim > 0.55 ? 0.0 : rim > 0.3 ? 0.12 : height > 0.7 ? 0.28 : height > 0.45 ? 0.45 : 0.72
         ),
         sampleSphere(count, 1),
         // One smooth sweep down the bulb's long axis: gold at the head,
         // through white, into violet, blue and teal at the base.
-        sampleSilhouette(drawBulb, count, 0.60, 0.34, (_u, v) =>
+        sampleSilhouette(drawBulb, count, 0.60, 0.34, (_u, v, _height, _rim) =>
           Math.min(1, Math.max(0, (v - 0.04) / 0.92))
         ),
         sampleScatter(count, 1.5, rand),
