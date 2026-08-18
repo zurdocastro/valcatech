@@ -33,6 +33,29 @@
   --font-display: "Inter", ui-sans-serif, system-ui, sans-serif;
   --font-mono: "Inter", ui-monospace, monospace;
 
+  --text-caption: 12px;
+  --text-nav-label: 14px;
+  --text-body: 18px;
+  --text-heading-2xs: 24px;
+  --text-heading-xs: 27px;
+  --text-subheading: 36px;
+  --text-heading-sm: 42px;
+  --text-heading: 48px;
+  --text-heading-lg: 78px;
+  --text-display: 113px;
+
+  --spacing-6: 6px;
+  --spacing-12: 12px;
+  --spacing-18: 18px;
+  --spacing-24: 24px;
+  --spacing-30: 30px;
+  --spacing-36: 36px;
+  --spacing-60: 60px;
+  --spacing-96: 96px;
+  --spacing-120: 120px;
+
+  --radius-3xl: 24px;
+  --radius-full: 9999px;
   --radius-sm: 8px;
   --radius-md: 12px;
   --radius-lg: 20px;
@@ -49,19 +72,45 @@
   --saffron: #FFB829;
   --verdant: #15846E;
 
-  /* Type scale (Dala) */
-  --text-caption: 12px;
-  --text-nav-label: 14px;
-  --text-body: 18px;
-  --text-heading-2xs: 24px;
-  --text-heading-xs: 27px;
-  --text-subheading: 36px;
-  --text-heading-sm: 42px;
-  --text-heading: 48px;
-  --text-heading-lg: 78px;
-  --text-display: 113px;
+  /* Type scale — sizes, leading and tracking, as published */
+  --text-caption: 12px;            --leading-caption: 1.5;
+  --text-nav-label: 14px;          --leading-nav-label: 1.2;   --tracking-nav-label: 0.35px;
+  --text-body: 18px;               --leading-body: 1.5;
+  --text-heading-2xs: 24px;        --leading-heading-2xs: 1.25; --tracking-heading-2xs: -0.48px;
+  --text-heading-xs: 27px;         --leading-heading-xs: 1;
+  --text-subheading: 36px;         --leading-subheading: 1.2;
+  --text-heading-sm: 42px;         --leading-heading-sm: 1.2;   --tracking-heading-sm: -1.68px;
+  --text-heading: 48px;            --leading-heading: 1.1;      --tracking-heading: -1.68px;
+  --text-heading-lg: 78px;         --leading-heading-lg: 1.1;   --tracking-heading-lg: -3.12px;
+  --text-display: 113px;           --leading-display: 1.1;      --tracking-display: -4.52px;
+
+  /* Weights */
+  --font-weight-extralight: 200;
+  --font-weight-regular: 400;
+  --font-weight-semibold: 600;
+  --font-weight-bold: 700;
+
+  /* Layout + named radii */
+  --page-max-width: 1280px;
+  --radius-3xl: 24px;
+  --radius-full: 9999px;
+  --radius-nav: 24px;
+  --radius-tags: 9999px;
+  --radius-cards: 24px;
+  --radius-buttons: 24px;
+
+  /* Surfaces. The published token for level 1 reads "#15846", a five-digit
+     value that is not a valid colour; the palette entry it refers to is
+     #15846e, so that is what is used here. */
+  --surface-void-canvas: #000000;
+  --surface-deep-verdant-tint: #15846E;
+  --surface-electric-iris: #8052FF;
 
   /* Spacing (6px base) */
+  --spacing-unit: 6px;
+  --spacing-6: 6px; --spacing-12: 12px; --spacing-18: 18px; --spacing-24: 24px;
+  --spacing-30: 30px; --spacing-36: 36px; --spacing-60: 60px; --spacing-96: 96px;
+  --spacing-120: 120px;
   --space-6: 6px; --space-12: 12px; --space-18: 18px; --space-24: 24px;
   --space-30: 30px; --space-36: 36px; --space-60: 60px; --space-96: 96px;
   --space-120: 120px;
@@ -126,7 +175,7 @@ input, select, textarea, button { font-family: inherit; color: inherit; }
 
 .site ::selection { background: var(--iris); color: #fff; }
 
-.wrap { max-width: 1280px; margin: 0 auto; padding: 0 30px; }
+.wrap { max-width: var(--page-max-width); margin: 0 auto; padding: 0 30px; }
 
 .site section { padding: var(--space-120) 0; }
 
@@ -138,23 +187,24 @@ input, select, textarea, button { font-family: inherit; color: inherit; }
   letter-spacing: -0.04em;
   line-height: 1.1;
 }
-.display  { font-size: clamp(52px, 8vw, 113px); }
-.h-lg     { font-size: clamp(40px, 5.6vw, 78px); }
-.h        { font-size: clamp(34px, 4vw, 48px); }
-.h-sm     { font-size: clamp(30px, 3.4vw, 42px); line-height: 1.2; }
-.h-2xs    { font-size: 24px; line-height: 1.25; letter-spacing: -0.02em; }
+.display  { font-size: clamp(52px, 8vw, var(--text-display)); line-height: var(--leading-display); }
+.h-lg     { font-size: clamp(40px, 5.6vw, var(--text-heading-lg)); line-height: var(--leading-heading-lg); }
+.h        { font-size: clamp(34px, 4vw, var(--text-heading)); line-height: var(--leading-heading); }
+.h-sm     { font-size: clamp(30px, 3.4vw, var(--text-heading-sm)); line-height: var(--leading-heading-sm); }
+.h-2xs    { font-size: var(--text-heading-2xs); line-height: var(--leading-heading-2xs); letter-spacing: var(--tracking-heading-2xs); }
 
 .label {
   font-size: var(--text-nav-label);
-  font-weight: 600;
-  letter-spacing: 0.025em;
+  line-height: var(--leading-nav-label);
+  font-weight: var(--font-weight-semibold);
+  letter-spacing: var(--tracking-nav-label);
   text-transform: uppercase;
   color: var(--saffron);
 }
 
-.lede { font-size: var(--text-body); font-weight: 200; line-height: 1.5; color: var(--bone-white); max-width: 520px; }
-.body-muted { font-size: var(--text-body); font-weight: 200; line-height: 1.5; color: var(--silver-mist); }
-.caption { font-size: var(--text-caption); color: var(--ash-gray); line-height: 1.5; }
+.lede { font-size: var(--text-body); font-weight: var(--font-weight-extralight); line-height: var(--leading-body); color: var(--bone-white); max-width: 520px; }
+.body-muted { font-size: var(--text-body); font-weight: var(--font-weight-extralight); line-height: var(--leading-body); color: var(--silver-mist); }
+.caption { font-size: var(--text-caption); color: var(--ash-gray); line-height: var(--leading-caption); }
 
 /* Sole filled action — one per view */
 .pill {
@@ -164,7 +214,7 @@ input, select, textarea, button { font-family: inherit; color: inherit; }
   background: var(--iris);
   color: #fff;
   border: none;
-  border-radius: 24px;
+  border-radius: var(--radius-buttons);
   padding: 14.4px 15.96px;
   font-size: var(--text-nav-label);
   font-weight: 600;
@@ -190,8 +240,9 @@ input, select, textarea, button { font-family: inherit; color: inherit; }
 
 .nav-link {
   font-size: var(--text-nav-label);
-  font-weight: 600;
-  letter-spacing: 0.025em;
+  line-height: var(--leading-nav-label);
+  font-weight: var(--font-weight-semibold);
+  letter-spacing: var(--tracking-nav-label);
   text-transform: uppercase;
   color: var(--ash-gray);
 }

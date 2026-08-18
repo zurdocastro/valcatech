@@ -93,22 +93,51 @@ function fbm(x: number, y: number) {
   return value;
 }
 
-// Brain, built from its folds rather than from an outline.
+// Brain.
 //
-// Every earlier attempt drew a smooth bezier oval and then decorated it, and
-// every one of them read as a blob. A real brain has a SCALLOPED perimeter —
-// the gyri bulge out at the edge, so the outline is bumpy, and a smooth oval
-// can never look like one no matter what texture goes inside it. Drawing the
-// gyri as thick worms and letting their union be the silhouette produces the
-// bumpy edge and the fold structure from one construction, which is how brain
-// illustrations are actually made.
+// Two failed constructions taught this one. A smooth bezier oval with texture
+// inside reads as a blob, because a brain's perimeter is not smooth. But
+// letting thick worms BE the silhouette went too far the other way — the folds
+// protruded so far that it read as a bundle of tubes.
 //
-// Two passes per worm: a wide dim one lays the body, a narrow bright one puts a
-// crest down the middle. Luminance is height, so the crest rises and the seam
-// between neighbouring worms sinks.
+// What works is both: a coherent envelope carrying the recognisable outline,
+// broad gyri ridges painted only inside it, and the perimeter notched where
+// sulci run out to the edge — which is where a brain's scalloped outline
+// actually comes from. Luminance is height, so the ridges rise and the seams
+// between them sink.
 function drawBrain(ctx: CanvasRenderingContext2D, w: number, h: number) {
   const x = (v: number) => v * w;
   const y = (v: number) => v * h;
+
+  // Envelope, mid-grey: the floor every ridge rises from.
+  ctx.fillStyle = "rgb(120,120,120)";
+  ctx.beginPath();
+  ctx.moveTo(x(0.06), y(0.46));
+  ctx.bezierCurveTo(x(0.05), y(0.24), x(0.22), y(0.08), x(0.45), y(0.07));
+  ctx.bezierCurveTo(x(0.66), y(0.04), x(0.88), y(0.14), x(0.91), y(0.33));
+  ctx.bezierCurveTo(x(0.95), y(0.46), x(0.88), y(0.55), x(0.78), y(0.58));
+  ctx.bezierCurveTo(x(0.76), y(0.66), x(0.70), y(0.72), x(0.60), y(0.73));
+  ctx.bezierCurveTo(x(0.48), y(0.76), x(0.30), y(0.74), x(0.19), y(0.66));
+  ctx.bezierCurveTo(x(0.10), y(0.60), x(0.06), y(0.55), x(0.06), y(0.46));
+  ctx.closePath();
+  ctx.fill();
+
+  ctx.beginPath();
+  ctx.ellipse(x(0.76), y(0.70), x(0.15), y(0.11), 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  ctx.beginPath();
+  ctx.moveTo(x(0.545), y(0.70));
+  ctx.lineTo(x(0.615), y(0.70));
+  ctx.bezierCurveTo(x(0.612), y(0.84), x(0.605), y(0.93), x(0.596), y(0.98));
+  ctx.lineTo(x(0.552), y(0.98));
+  ctx.bezierCurveTo(x(0.546), y(0.93), x(0.545), y(0.84), x(0.545), y(0.70));
+  ctx.closePath();
+  ctx.fill();
+
+  // Gyri, clipped to the envelope so they shape the surface without deforming
+  // the outline.
+  ctx.globalCompositeOperation = "source-atop";
   ctx.lineCap = "round";
   ctx.lineJoin = "round";
 
@@ -126,34 +155,49 @@ function drawBrain(ctx: CanvasRenderingContext2D, w: number, h: number) {
     ctx.stroke();
   };
 
-  // Cerebral gyri, sweeping front to back and stacking down the lobes.
   const GYRI = [
-    [[0.09, 0.44], [0.14, 0.26], [0.28, 0.15], [0.47, 0.12], [0.66, 0.15], [0.80, 0.23], [0.88, 0.36]],
-    [[0.11, 0.53], [0.19, 0.34], [0.33, 0.25], [0.50, 0.22], [0.66, 0.26], [0.78, 0.34], [0.86, 0.46]],
-    [[0.15, 0.61], [0.24, 0.45], [0.38, 0.36], [0.53, 0.34], [0.67, 0.38], [0.77, 0.47]],
-    [[0.19, 0.67], [0.31, 0.55], [0.45, 0.49], [0.59, 0.49], [0.70, 0.55]],
-    [[0.23, 0.72], [0.35, 0.67], [0.48, 0.65], [0.59, 0.67]],
-    [[0.09, 0.46], [0.09, 0.58], [0.15, 0.66]],
-    [[0.86, 0.40], [0.89, 0.50], [0.83, 0.58]],
+    [[0.08, 0.40], [0.15, 0.22], [0.31, 0.13], [0.50, 0.11], [0.68, 0.15], [0.83, 0.24], [0.90, 0.36]],
+    [[0.08, 0.52], [0.17, 0.32], [0.33, 0.22], [0.51, 0.20], [0.68, 0.25], [0.81, 0.34], [0.88, 0.45]],
+    [[0.12, 0.62], [0.22, 0.44], [0.37, 0.33], [0.54, 0.31], [0.69, 0.36], [0.80, 0.46]],
+    [[0.18, 0.69], [0.30, 0.55], [0.45, 0.46], [0.60, 0.45], [0.72, 0.52]],
+    [[0.24, 0.73], [0.37, 0.66], [0.50, 0.62], [0.62, 0.63]],
+    [[0.07, 0.44], [0.06, 0.56], [0.13, 0.66]],
+    [[0.88, 0.38], [0.92, 0.47], [0.85, 0.55]],
   ];
-  // Cerebellum: tighter, near-parallel folia.
   const FOLIA = [
-    [[0.70, 0.70], [0.80, 0.68], [0.90, 0.70]],
-    [[0.70, 0.76], [0.80, 0.74], [0.90, 0.76]],
-    [[0.72, 0.82], [0.81, 0.80], [0.89, 0.82]],
+    [[0.66, 0.68], [0.76, 0.66], [0.87, 0.68]],
+    [[0.66, 0.73], [0.76, 0.71], [0.87, 0.73]],
+    [[0.68, 0.78], [0.77, 0.76], [0.86, 0.78]],
   ];
-  const STEM = [[0.60, 0.66], [0.605, 0.79], [0.593, 0.93]];
-
-  for (const g of GYRI) worm(g, 0.105, "rgb(64,64,64)");
-  for (const g of FOLIA) worm(g, 0.062, "rgb(64,64,64)");
-  worm(STEM, 0.062, "rgb(64,64,64)");
 
   const hasBlur = "filter" in ctx;
-  if (hasBlur) ctx.filter = `blur(${Math.max(1, w * 0.006)}px)`;
-  for (const g of GYRI) worm(g, 0.048, "rgb(255,255,255)");
-  for (const g of FOLIA) worm(g, 0.026, "rgb(238,238,238)");
-  worm(STEM, 0.028, "rgb(205,205,205)");
+  if (hasBlur) ctx.filter = `blur(${Math.max(1, w * 0.007)}px)`;
+  for (const g of GYRI) worm(g, 0.052, "rgb(255,255,255)");
+  for (const f of FOLIA) worm(f, 0.020, "rgb(235,235,235)");
+  worm([[0.58, 0.72], [0.583, 0.85], [0.575, 0.96]], 0.026, "rgb(200,200,200)");
   if (hasBlur) ctx.filter = "none";
+
+  // Perimeter notches.
+  ctx.globalCompositeOperation = "destination-out";
+  ctx.strokeStyle = "#000";
+  ctx.lineWidth = w * 0.030;
+  const notch = (a: number[], b: number[]) => {
+    ctx.beginPath();
+    ctx.moveTo(x(a[0]), y(a[1]));
+    ctx.lineTo(x(b[0]), y(b[1]));
+    ctx.stroke();
+  };
+  notch([0.24, 0.02], [0.27, 0.13]);
+  notch([0.42, 0.00], [0.43, 0.12]);
+  notch([0.60, 0.01], [0.58, 0.12]);
+  notch([0.76, 0.05], [0.73, 0.16]);
+  notch([0.02, 0.34], [0.13, 0.36]);
+  notch([0.02, 0.52], [0.13, 0.50]);
+  notch([0.96, 0.28], [0.86, 0.30]);
+  notch([0.97, 0.44], [0.87, 0.43]);
+  notch([0.30, 0.80], [0.32, 0.69]);
+  notch([0.46, 0.82], [0.46, 0.71]);
+  ctx.globalCompositeOperation = "source-over";
 }
 
 // Lightbulb: a circle, a waisted neck, a threaded barrel. The three parts a
@@ -460,7 +504,7 @@ export default function Constellation() {
       const clouds: Cloud[] = [
         // Gold rides the crest of every fold, white fills the faces between
         // them, violet sinks into the valleys — the reference's brain read.
-        sampleSilhouette(drawBrain, count, 1.25, 0.34, (_u, _v, height) =>
+        sampleSilhouette(drawBrain, count, 1.28, 0.34, (_u, _v, height) =>
           height > 0.86 ? 0.02 : height > 0.55 ? 0.24 + (1 - height) * 0.4 : 0.62 + (0.55 - height) * 0.5
         ),
         sampleSphere(count, 1),
