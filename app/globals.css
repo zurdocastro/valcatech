@@ -63,14 +63,26 @@
 }
 
 :root {
-  /* Dala palette */
-  --void: #000000;
-  --bone-white: #FFFFFF;
-  --ash-gray: #9A9A9A;
-  --silver-mist: #BDBDBD;
-  --iris: #8052FF;
-  --saffron: #FFB829;
-  --verdant: #15846E;
+  /* Palette, under the names the spec publishes. Tailwind's @theme block does
+     not expose these on :root, so anything reading the documented token names
+     from the document — an agent, a snippet, a consumer — found nothing. */
+  --color-void: #000000;
+  --color-bone-white: #ffffff;
+  --color-ash-gray: #9a9a9a;
+  --color-silver-mist: #bdbdbd;
+  --color-electric-iris: #8052ff;
+  --color-saffron-spark: #ffb829;
+  --color-deep-verdant: #15846e;
+
+  /* Short aliases used throughout the stylesheet, pointing at the canonical
+     tokens above so there is one source of truth. */
+  --void: var(--color-void);
+  --bone-white: var(--color-bone-white);
+  --ash-gray: var(--color-ash-gray);
+  --silver-mist: var(--color-silver-mist);
+  --iris: var(--color-electric-iris);
+  --saffron: var(--color-saffron-spark);
+  --verdant: var(--color-deep-verdant);
 
   /* Type scale — sizes, leading and tracking, as published */
   --text-caption: 12px;            --leading-caption: 1.5;
