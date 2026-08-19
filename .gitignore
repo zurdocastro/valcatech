@@ -15,3 +15,6 @@ app/generated
 .DS_Store
 .env*
 .gstack/
+
+# ...but the example, which carries no values, must ship.
+!.env.example
