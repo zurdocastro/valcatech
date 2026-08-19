@@ -177,3 +177,5 @@ Things that have already cost time here.
   new conditional. Never commit with failing tests.
 - Comments explain *why*, not what. Prefer the smallest change that actually fixes the
   cause.
+
+<!-- git-connected: pushes to main deploy automatically -->
