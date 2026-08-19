@@ -130,16 +130,6 @@ function drawBrain(ctx: CanvasRenderingContext2D, w: number, h: number) {
   ctx.ellipse(x(0.76), y(0.74), x(0.15), y(0.11), 0, 0, Math.PI * 2);
   ctx.fill();
 
-  // Stem.
-  ctx.beginPath();
-  ctx.moveTo(x(0.48), y(0.76));
-  ctx.lineTo(x(0.56), y(0.76));
-  ctx.bezierCurveTo(x(0.558), y(0.88), x(0.551), y(0.95), x(0.543), y(0.99));
-  ctx.lineTo(x(0.492), y(0.99));
-  ctx.bezierCurveTo(x(0.485), y(0.95), x(0.480), y(0.88), x(0.48), y(0.76));
-  ctx.closePath();
-  ctx.fill();
-
   // Gyri, clipped to the envelope so they shape the surface without deforming
   // the outline.
   ctx.globalCompositeOperation = "source-atop";
@@ -205,34 +195,25 @@ function drawBrain(ctx: CanvasRenderingContext2D, w: number, h: number) {
   ctx.globalCompositeOperation = "source-over";
 }
 
-// Lightbulb: a circle, a waisted neck, a threaded barrel. The three parts a
-// bulb is recognised by, in the proportions it is recognised at — an earlier
-// pass smoothed all three into one teardrop and it stopped reading as a bulb.
+// Lightbulb from the supplied motion reference: an elongated, continuous glass
+// envelope that narrows into a short stem. Its identity comes from the pear
+// silhouette and the gold-to-teal particle sweep, not a literal screw thread.
 function drawBulb(ctx: CanvasRenderingContext2D, w: number, h: number) {
   const x = (v: number) => v * w;
   const y = (v: number) => v * h;
   ctx.fillStyle = "#fff";
 
-  // Glass envelope.
+  // One continuous pear silhouette. Keeping the shoulders and stem in the same
+  // path lets the brain's particles converge without a visual seam.
   ctx.beginPath();
-  ctx.arc(x(0.5), y(0.30), x(0.30), 0, Math.PI * 2);
-  ctx.fill();
-
-  // Neck, with the concave shoulders that make the waist read.
-  ctx.beginPath();
-  ctx.moveTo(x(0.26), y(0.44));
-  ctx.bezierCurveTo(x(0.33), y(0.52), x(0.36), y(0.55), x(0.36), y(0.61));
-  ctx.lineTo(x(0.64), y(0.61));
-  ctx.bezierCurveTo(x(0.64), y(0.55), x(0.67), y(0.52), x(0.74), y(0.44));
-  ctx.closePath();
-  ctx.fill();
-
-  // Screw base.
-  ctx.beginPath();
-  ctx.moveTo(x(0.36), y(0.61));
-  ctx.lineTo(x(0.64), y(0.61));
-  ctx.lineTo(x(0.63), y(0.88));
-  ctx.bezierCurveTo(x(0.62), y(0.96), x(0.38), y(0.96), x(0.37), y(0.88));
+  ctx.moveTo(x(0.50), y(0.035));
+  ctx.bezierCurveTo(x(0.22), y(0.035), x(0.08), y(0.22), x(0.10), y(0.42));
+  ctx.bezierCurveTo(x(0.12), y(0.60), x(0.32), y(0.67), x(0.36), y(0.76));
+  ctx.bezierCurveTo(x(0.39), y(0.83), x(0.39), y(0.92), x(0.40), y(0.98));
+  ctx.lineTo(x(0.60), y(0.98));
+  ctx.bezierCurveTo(x(0.61), y(0.92), x(0.61), y(0.83), x(0.64), y(0.76));
+  ctx.bezierCurveTo(x(0.68), y(0.67), x(0.88), y(0.60), x(0.90), y(0.42));
+  ctx.bezierCurveTo(x(0.92), y(0.22), x(0.78), y(0.035), x(0.50), y(0.035));
   ctx.closePath();
   ctx.fill();
 
@@ -245,14 +226,14 @@ function drawBulb(ctx: CanvasRenderingContext2D, w: number, h: number) {
       const u = i / w;
       const v = j / h;
       let height: number;
-      if (v > 0.61) {
-        // Helical thread: skewed by u so the ridge climbs the barrel.
-        height = 0.30 + 0.70 * (0.5 + 0.5 * Math.sin((v - 0.61) * 120 + (u - 0.5) * 8));
-      } else if (v > 0.44) {
-        height = 0.55;
+      if (v > 0.76) {
+        // The reference's base stays smooth and dense, with its definition
+        // coming from colour rather than mechanical thread lines.
+        height = 0.48 + 0.12 * Math.cos((u - 0.5) * Math.PI);
       } else {
-        const dome = Math.max(0, 1 - Math.hypot((u - 0.5) / 0.31, (v - 0.30) / 0.31));
-        height = 0.40 + 0.60 * Math.sqrt(dome);
+        const halfWidth = 0.40 * Math.max(0.24, 1 - Math.pow(Math.max(0, v - 0.36), 1.55));
+        const dome = Math.max(0, 1 - Math.pow((u - 0.5) / halfWidth, 2));
+        height = 0.38 + 0.62 * Math.sqrt(dome);
       }
       const level = Math.round(Math.max(0, Math.min(1, height)) * 255);
       px[o] = level;
@@ -460,7 +441,9 @@ function sampleScatter(count: number, radius: number, rand: () => number): Cloud
 }
 
 // Shape order; a section names one of these in `data-shape`.
-const SHAPE_NAMES: string[] = ["brain", "sphere", "bulb", "scatter"];
+// The section order deliberately follows the supplied film: a coherent brain
+// loosens into a dispersed field, then those same particles resolve as a bulb.
+const SHAPE_NAMES: string[] = ["brain", "scatter", "bulb", "sphere"];
 
 // Deterministic PRNG so the cloud is identical across rebuilds and resizes — a
 // Math.random() cloud would reshuffle on every resize and make the shape jump.
@@ -535,13 +518,13 @@ export default function Constellation() {
         sampleSilhouette(drawBrain, count, 1.35, 0.34, (_u, _v, height, rim) =>
           rim > 0.55 ? 0.0 : rim > 0.3 ? 0.12 : height > 0.7 ? 0.28 : height > 0.45 ? 0.45 : 0.72
         ),
-        sampleSphere(count, 1),
+        sampleScatter(count, 1.5, rand),
         // One smooth sweep down the bulb's long axis: gold at the head,
         // through white, into violet, blue and teal at the base.
         sampleSilhouette(drawBulb, count, 0.60, 0.34, (_u, v, _height, _rim) =>
           Math.min(1, Math.max(0, (v - 0.04) / 0.92))
         ),
-        sampleScatter(count, 1.5, rand),
+        sampleSphere(count, 1),
       ];
 
       const next: Particle[] = [];
@@ -595,12 +578,13 @@ export default function Constellation() {
       const rect = best.getBoundingClientRect();
       const side = best.dataset.orb === "left" ? 0.32 : 0.68;
       const shape = Math.max(0, SHAPE_NAMES.indexOf(best.dataset.shape ?? "brain"));
+      const isBulb = best.dataset.shape === "bulb";
       return {
         // Below the two-column breakpoint there is no free half, so the field
         // centres and drops right back — the copy has to win.
         x: wide ? w * side : w * 0.5,
-        y: Math.min(h * 0.72, Math.max(h * 0.28, rect.top + rect.height / 2)),
-        scale: baseScale * (wide ? 1 : 0.8),
+        y: isBulb && wide ? h * 0.5 : Math.min(h * 0.72, Math.max(h * 0.28, rect.top + rect.height / 2)),
+        scale: baseScale * (wide ? (isBulb ? 0.52 : 1) : 0.8),
         alpha: wide ? 1 : 0.35,
         shape,
       };
