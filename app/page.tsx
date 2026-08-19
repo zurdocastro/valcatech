@@ -95,8 +95,7 @@ export default function Home() {
       {/* Agent stack */}
       <section id="agents">
         <div className="wrap">
-          <div className="two-col" data-orb="left" data-shape="bulb" style={{ marginBottom: 96, minHeight: "min(60vh, 520px)", alignItems: "center" }}>
-            <div aria-hidden />
+          <div className="two-col" data-orb="right" data-shape="bulb" style={{ marginBottom: 96, minHeight: "min(60vh, 520px)", alignItems: "center" }}>
             <div>
               <Reveal>
                 <div>
@@ -108,6 +107,7 @@ export default function Home() {
                 <p className="body-muted" style={{ margin: 0, maxWidth: 520 }}>{AGENTS_INTRO}</p>
               </Reveal>
             </div>
+            <div aria-hidden />
           </div>
 
           <div>
