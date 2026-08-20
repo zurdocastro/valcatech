@@ -87,8 +87,8 @@ export default function ChatWidget({ locale = "en" }: { locale?: Locale }) {
 
   const bubble = (mine: boolean): React.CSSProperties => ({
     alignSelf: mine ? "flex-end" : "flex-start",
-    background: mine ? "var(--iris)" : "rgba(255,255,255,.07)",
-    color: mine ? "#fff" : "var(--silver-mist)",
+    background: mine ? "var(--lime)" : "rgba(255,255,255,.08)",
+    color: mine ? "var(--ink-head)" : "#E6E3DC",
     borderRadius: 16,
     padding: "10px 14px",
     fontSize: 14,
@@ -105,14 +105,14 @@ export default function ChatWidget({ locale = "en" }: { locale?: Locale }) {
         aria-label={c.title}
         style={{
           position: "fixed", bottom: 24, right: 24, zIndex: 200, width: 56, height: 56, borderRadius: "50%",
-          background: "var(--iris)", border: "none", cursor: "pointer",
+          background: "var(--lime)", border: "none", cursor: "pointer",
           display: "flex", alignItems: "center", justifyContent: "center",
           transition: "transform 0.2s ease",
         }}
         onMouseEnter={(e) => { e.currentTarget.style.transform = "scale(1.06)"; }}
         onMouseLeave={(e) => { e.currentTarget.style.transform = "scale(1)"; }}
       >
-        {open ? <X size={24} color="#fff" /> : <MessageSquare size={24} color="#fff" />}
+        {open ? <X size={24} color="#171412" /> : <MessageSquare size={24} color="#171412" />}
       </button>
 
       {open && (
@@ -120,7 +120,7 @@ export default function ChatWidget({ locale = "en" }: { locale?: Locale }) {
           style={{
             position: "fixed", bottom: 92, right: 24, zIndex: 199, width: 360, maxWidth: "calc(100vw - 32px)",
             height: 480, maxHeight: "calc(100vh - 140px)",
-            background: "#0B0B0D", borderRadius: 24,
+            background: "#151312", borderRadius: 16,
             display: "flex", flexDirection: "column", overflow: "hidden",
           }}
         >
@@ -133,7 +133,7 @@ export default function ChatWidget({ locale = "en" }: { locale?: Locale }) {
             {messages.map((m, i) => (
               <div key={i} style={bubble(m.role === "user")}>{m.body}</div>
             ))}
-            {loading && <div style={{ ...bubble(false), color: "var(--ash-gray)" }}>···</div>}
+            {loading && <div style={{ ...bubble(false), color: "var(--ink-muted-on-dark)" }}>···</div>}
           </div>
 
           <form onSubmit={handleSubmit} style={{ display: "flex", alignItems: "flex-end", gap: 10, padding: "12px 16px 16px" }}>

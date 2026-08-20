@@ -63,26 +63,21 @@
 }
 
 :root {
-  /* Palette, under the names the spec publishes. Tailwind's @theme block does
-     not expose these on :root, so anything reading the documented token names
-     from the document — an agent, a snippet, a consumer — found nothing. */
-  --color-void: #000000;
-  --color-bone-white: #ffffff;
-  --color-ash-gray: #9a9a9a;
-  --color-silver-mist: #bdbdbd;
-  --color-electric-iris: #8052ff;
-  --color-saffron-spark: #ffb829;
-  --color-deep-verdant: #15846e;
+  /* Palette measured from the reference site: warm off-white canvas, three
+     alternating surfaces, an acid-lime action colour and a lavender band. */
+  --paper: #faf9f5;
+  --beige: #f1eee6;
+  --white-pure: #ffffff;
+  --lavender: #cfc4f7;
+  --purple-deep: #4c3a8f;
+  --ink-surface: #151312;
+  --lime: #b8ff2e;
 
-  /* Short aliases used throughout the stylesheet, pointing at the canonical
-     tokens above so there is one source of truth. */
-  --void: var(--color-void);
-  --bone-white: var(--color-bone-white);
-  --ash-gray: var(--color-ash-gray);
-  --silver-mist: var(--color-silver-mist);
-  --iris: var(--color-electric-iris);
-  --saffron: var(--color-saffron-spark);
-  --verdant: var(--color-deep-verdant);
+  --ink-head: #171412;
+  --ink-body: #2e2a25;
+  --ink-muted: #6e685f;
+  --ink-muted-on-dark: #a39e94;
+  --hairline: #e4e0d6;
 
   /* Type scale — sizes, leading and tracking, as published */
   --text-caption: 12px;            --leading-caption: 1.5;
@@ -155,11 +150,11 @@
 
 html, body { padding: 0; margin: 0; }
 
-/* The void is the default canvas — every admin screen paints its own light
-   surface over it, so overscroll on the marketing site never flashes white. */
+/* Paper is the default canvas, so overscroll never flashes a foreign colour.
+   Every admin screen paints its own surface over it. */
 body {
-  background: var(--void);
-  color: var(--ink);
+  background: var(--paper);
+  color: var(--ink-body);
   font-family: var(--font-display), ui-sans-serif, system-ui, sans-serif;
   font-feature-settings: "ss01" on;
   -webkit-font-smoothing: antialiased;
@@ -172,164 +167,141 @@ a { color: inherit; text-decoration: none; }
 input, select, textarea, button { font-family: inherit; color: inherit; }
 
 /* ------------------------------------------------------------------ */
-/* Marketing site — Dala dark stage. Scoped to .site so the backoffice  */
-/* keeps its light theme untouched.                                     */
+/* Marketing site — warm light canvas with alternating surfaces.        */
+/* Scoped to .site so the backoffice keeps its own theme.               */
 /* ------------------------------------------------------------------ */
 
 .site {
-  background: var(--void);
-  color: var(--bone-white);
+  background: var(--paper);
+  color: var(--ink-body);
   min-height: 100vh;
-  font-size: var(--text-body);
-  font-weight: 200;
-  line-height: 1.5;
+  font-size: 16px;
+  font-weight: 400;
+  line-height: 1.6;
 }
 
-.site ::selection { background: var(--iris); color: #fff; }
+.site ::selection { background: var(--lime); color: var(--ink-head); }
 
-.wrap { max-width: var(--page-max-width); margin: 0 auto; padding: 0 30px; }
+.wrap { max-width: 1240px; margin: 0 auto; padding: 0 24px; }
 
-.site section { padding: var(--space-120) 0; }
+.site section { padding: 90px 0; }
 
-/* Display type — hierarchy from scale + tracking, never from weight */
+/* Surfaces. Sections alternate between them to give the page its rhythm —
+   without the alternation the whole thing flattens into one long sheet. */
+.s-paper    { background: var(--paper); }
+.s-beige    { background: var(--beige); }
+.s-white    { background: var(--white-pure); }
+.s-lavender { background: var(--lavender); }
+.s-ink      { background: var(--ink-surface); color: var(--paper); }
+
+.s-ink .h-lg, .s-ink .h, .s-ink .h-sm, .s-ink .h-2xs, .s-ink .display { color: var(--paper); }
+.s-ink .body-muted { color: var(--ink-muted-on-dark); }
+.s-ink .lede { color: #E6E3DC; }
+.s-ink .caption { color: var(--ink-muted-on-dark); }
+
+/* Display type: weight 400 at large scale with negative tracking. */
 .display, .h-lg, .h, .h-sm, .h-2xs {
   font-weight: 400;
   text-wrap: balance;
-  color: var(--bone-white);
-  letter-spacing: -0.04em;
-  line-height: 1.1;
+  color: var(--ink-head);
+  letter-spacing: -0.02em;
+  line-height: 1.05;
 }
-.display  { font-size: clamp(52px, 8vw, var(--text-display)); line-height: var(--leading-display); }
-.h-lg     { font-size: clamp(40px, 5.6vw, var(--text-heading-lg)); line-height: var(--leading-heading-lg); }
-.h        { font-size: clamp(34px, 4vw, var(--text-heading)); line-height: var(--leading-heading); }
-.h-sm     { font-size: clamp(30px, 3.4vw, var(--text-heading-sm)); line-height: var(--leading-heading-sm); }
-.h-2xs    { font-size: var(--text-heading-2xs); line-height: var(--leading-heading-2xs); letter-spacing: var(--tracking-heading-2xs); }
+.display { font-size: clamp(42px, 5.7vw, 82px); }
+.h-lg    { font-size: clamp(32px, 4.1vw, 59px); }
+.h       { font-size: clamp(28px, 3.4vw, 49px); }
+.h-sm    { font-size: clamp(26px, 2.9vw, 42px); line-height: 1.1; }
+.h-2xs   { font-size: 20px; font-weight: 500; line-height: 1.3; letter-spacing: -0.01em; }
 
 .label {
-  font-size: var(--text-nav-label);
-  line-height: var(--leading-nav-label);
-  font-weight: var(--font-weight-semibold);
-  letter-spacing: var(--tracking-nav-label);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: var(--saffron);
+  color: var(--ink-muted);
 }
+.s-ink .label { color: var(--lime); }
+.s-lavender .label { color: var(--purple-deep); }
 
-.lede { font-size: var(--text-body); font-weight: var(--font-weight-extralight); line-height: var(--leading-body); color: var(--bone-white); max-width: 520px; }
-.body-muted { font-size: var(--text-body); font-weight: var(--font-weight-extralight); line-height: var(--leading-body); color: var(--silver-mist); }
-.caption { font-size: var(--text-caption); color: var(--ash-gray); line-height: var(--leading-caption); }
+.lede { font-size: 18px; font-weight: 400; line-height: 1.6; color: var(--ink-body); max-width: 560px; }
+.body-muted { font-size: 16px; font-weight: 400; line-height: 1.6; color: var(--ink-muted); }
+.caption { font-size: 13px; color: var(--ink-muted); line-height: 1.5; }
 
-/* Sole filled action — one per view */
+/* Primary action: the lime pill. */
 .pill {
   display: inline-flex;
   align-items: center;
-  gap: 10px;
-  background: var(--iris);
-  color: #fff;
+  gap: 8px;
+  background: var(--lime);
+  color: var(--ink-head);
   border: none;
-  border-radius: var(--radius-buttons);
-  padding: 14.4px 15.96px;
-  font-size: var(--text-nav-label);
-  font-weight: 600;
-  letter-spacing: 0.025em;
-  text-transform: uppercase;
+  border-radius: 5px;
+  padding: 12px 20px;
+  font-size: 14px;
+  font-weight: 500;
   cursor: pointer;
 }
-.pill:hover { opacity: .86; transform: translateY(-1px); }
-.pill:disabled { opacity: .5; cursor: not-allowed; transform: none; }
+.pill:hover { filter: brightness(1.06); }
+.pill:disabled { opacity: .5; cursor: not-allowed; }
 
-/* Secondary action — bare text, hierarchy from type alone */
+/* Secondary: bare text. */
 .ghost {
   background: none;
   border: none;
   padding: 0;
-  color: var(--ash-gray);
-  font-size: var(--text-nav-label);
-  font-weight: 400;
-  letter-spacing: 0.025em;
+  color: var(--ink-muted);
+  font-size: 14px;
+  font-weight: 500;
   cursor: pointer;
 }
-.ghost:hover { color: var(--bone-white); }
+.ghost:hover { color: var(--ink-head); }
+.s-ink .ghost { color: var(--ink-muted-on-dark); }
+.s-ink .ghost:hover { color: var(--paper); }
 
 .nav-link {
-  font-size: var(--text-nav-label);
-  line-height: var(--leading-nav-label);
-  font-weight: var(--font-weight-semibold);
-  letter-spacing: var(--tracking-nav-label);
-  text-transform: uppercase;
-  color: var(--ash-gray);
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--ink-muted);
 }
-.nav-link:hover { color: var(--bone-white); }
+.nav-link:hover { color: var(--ink-head); }
 
 .two-col {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-  gap: var(--space-60);
+  gap: 56px;
   align-items: start;
 }
 
 .field {
   width: 100%;
-  background: transparent;
-  border: none;
-  border-bottom: 1px solid rgba(255,255,255,.18);
-  color: var(--bone-white);
-  font-size: 18px;
-  font-weight: 200;
-  padding: 12px 0;
+  background: rgba(255,255,255,.06);
+  border: 1px solid rgba(255,255,255,.16);
+  border-radius: 7px;
+  color: var(--paper);
+  font-size: 15px;
+  font-weight: 400;
+  padding: 12px 14px;
   outline: none;
   transition: border-color .18s ease;
 }
-.field::placeholder { color: var(--ash-gray); }
-.field:focus { border-bottom-color: var(--iris); }
+.field::placeholder { color: var(--ink-muted-on-dark); }
+.field:focus { border-color: var(--lime); }
 
-/* Kept as a spacer so the rhythm survives without a visible line. */
-.rule { height: 0; border: none; margin: 0; }
+/* Hairline separators, in the warm neutral the palette allows. */
+.rule { height: 1px; background: var(--hairline); border: none; margin: 0; }
+.s-ink .rule { background: rgba(255,255,255,.12); }
 
-/* The particle field is a fixed layer behind the whole page — that is what lets
-   the shape morph from section to section rather than only inside the hero. */
-.constellation {
-  position: fixed;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  pointer-events: none;
-  z-index: 0;
-}
-
-.site > section,
-.site > footer { position: relative; z-index: 1; }
-
-/* Below the two-column breakpoint the cloud centres and sits behind the copy,
-   so it drops back to stay out of the text's way. */
-@media (max-width: 900px) {
-  .constellation { opacity: .4; }
-}
-
-/* GSAP flips this with autoAlpha once the lines are split, so text never
-   appears un-split for a frame. Keep it visibility-only: opacity is the
-   property the tweens animate. */
 .reveal { visibility: hidden; }
+@media (prefers-reduced-motion: reduce) { .reveal { visibility: visible; } }
 
-@media (prefers-reduced-motion: reduce) {
-  .reveal { visibility: visible; }
-}
-
-/* Easing curves taken from the reference implementation's own stylesheet. */
-.site a,
-.site button { transition: color .5s cubic-bezier(.5, 1, .89, 1); }
-
-.site .pill { transition: transform .3s cubic-bezier(.25, 1, .5, 1), opacity .3s cubic-bezier(.25, 1, .5, 1); }
-
+.site a, .site button { transition: color .3s cubic-bezier(.5, 1, .89, 1); }
+.site .pill { transition: filter .2s ease, transform .2s cubic-bezier(.25, 1, .5, 1); }
 .faq-plus { transition: transform .3s cubic-bezier(.25, 1, .5, 1); }
 
-/* Hierarchy comes from scale, colour and whitespace — the spec allows no
-   borders or dividers anywhere, so nav hover is a colour change and nothing
-   more. */
-
 @media (max-width: 900px) {
-  .site section { padding: var(--space-60) 0; }
-  .two-col { grid-template-columns: 1fr; gap: var(--space-36); }
-  .agent-row { grid-template-columns: 1fr !important; gap: 12px !important; }
+  .site section { padding: 60px 0; }
+  .two-col { grid-template-columns: 1fr; gap: 32px; }
+  .agent-row { grid-template-columns: 1fr !important; gap: 8px !important; }
   .site h2[style*="sticky"] { position: static !important; }
 }
 

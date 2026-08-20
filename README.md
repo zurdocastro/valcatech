@@ -38,7 +38,6 @@ run the site locally.
 | `app/page.tsx` | The whole marketing page. Sections are plain markup; copy comes from `lib/content.ts`. |
 | `lib/content.ts` | Every word on the marketing site. The chat agent builds its system prompt from the same constants, so the two can't drift. |
 | `app/globals.css` | Design tokens and the two themes: `.site` (dark marketing) and the backoffice's light classes. |
-| `components/site/Constellation.tsx` | The particle field. The largest and least obvious file — see below. |
 | `components/site/ui.tsx` | `Reveal` (GSAP split-line text animation), `StatCounter`, `Faq`. |
 | `app/admin/**` | Backoffice: dashboard, leads, chat agent, email campaigns, affiliates, discount codes, users. |
 | `app/api/**` | Route handlers. `contact` and `chat` are public; everything else requires an admin session. |
@@ -47,67 +46,35 @@ run the site locally.
 
 ## Design system
 
-The visual language follows a published spec (dark canvas, oversized weight-400 display
-type, ultra-light weight-200 body, one violet CTA). The tokens live at the top of
-`app/globals.css` in both `@theme` (Tailwind v4) and `:root` form. Rules worth knowing
-before changing anything visual:
+Warm light canvas with alternating section surfaces, measured from the reference
+site the design follows. Tokens sit at the top of `app/globals.css`.
 
-- Hierarchy comes from **scale and tracking, never weight**. Headlines are weight 400.
-- Body copy is weight **200**. Not 400.
-- `#8052ff` is for filled actions only — never a background for a large block.
-- **No borders, no dividers, no shadows anywhere.** Whitespace carries separation. `.rule`
-  exists as a zero-height spacer, deliberately invisible.
-- Backgrounds are pure `#000000`. Not dark grey.
+| Role | Token | Value |
+|---|---|---|
+| Page canvas | `--paper` | `#faf9f5` |
+| Alternate surface | `--beige` | `#f1eee6` |
+| Alternate surface | `--white-pure` | `#ffffff` |
+| Accent band | `--lavender` | `#cfc4f7` |
+| Contrast band | `--ink-surface` | `#151312` |
+| Action | `--lime` | `#b8ff2e` |
+| Headings / body / muted | `--ink-head` `--ink-body` `--ink-muted` | `#171412` `#2e2a25` `#6e685f` |
 
-## The particle field
+Rules worth knowing before changing anything visual:
 
-`components/site/Constellation.tsx` is a fixed, full-viewport 2D canvas behind the whole
-page. It morphs between four point clouds — brain, sphere, lightbulb, dispersed scatter —
-as you scroll.
+- **Sections alternate surfaces**, in this order: paper, ink, beige, paper,
+  lavender, ink, white, ink. Run them all on one surface and the page flattens
+  into a single sheet — the alternation is what gives it rhythm.
+- Apply a surface with its class (`.s-paper`, `.s-ink`, `.s-beige`,
+  `.s-white`, `.s-lavender`). `.s-ink` re-tints its own children, so text inside
+  a dark band needs no extra colour.
+- Display type is **weight 400** at large scale with about `-0.02em` tracking.
+  Small headings step up to 500 or 600.
+- `--lime` is the action colour, used on filled buttons only.
+- Inter throughout, matching the reference.
 
-How it fits together:
-
-- **Sections declare slots.** Any element with `data-orb="left|right"` and
-  `data-shape="brain|sphere|bulb|scatter"` claims the field. The slot nearest the middle
-  of the viewport wins, and the field eases toward its side, vertical centre and shape.
-  With no slot in view it falls back to a dim centred ambient state. Copy always sits in
-  the opposite column, so the field never lands behind text.
-- **Shapes are 3D point clouds of equal length**, so morphing is a straight lerp.
-- **Silhouettes are sampled from an offscreen mask**, walked on a calibrated grid rather
-  than sampled at random — the lattice rows are most of why the shapes read as objects.
-- **Luminance in the mask is height**, which becomes displacement along z, and each cloud
-  carries a surface normal derived from the height gradient.
-- **Hue and light are separate channels.** A per-point `tint` indexes the colour ramp and
-  belongs to the shape; the normal only decides brightness. The brain keys its gold off
-  distance-to-edge, so the accent reads as a rim.
-- **Draw calls are batched** by ramp step and depth band — a few dozen `stroke()` calls a
-  frame regardless of particle count.
-
-### Changing a shape
-
-Do not ship a silhouette without looking at it first. Render the mask on its own and read
-it back as a luminance map — in the browser console on any page of the site:
-
-```js
-const w = 340, h = Math.round(w / ASPECT);
-const cv = document.createElement('canvas'); cv.width = w; cv.height = h;
-const ctx = cv.getContext('2d', { willReadFrequently: true });
-drawYourShape(ctx, w, h);                       // paste the draw function in
-const d = ctx.getImageData(0, 0, w, h).data;
-const chars = " .:-=+*#%@";
-let out = "";
-for (let r = 0; r < 40; r++) {
-  for (let c = 0; c < 100; c++) {
-    const i = (c / 100 * w) | 0, j = (r / 40 * h) | 0, o = (j * w + i) * 4;
-    out += d[o + 3] < 128 ? " " : chars[Math.min(9, (d[o] / 256 * 10) | 0)];
-  }
-  out += "\n";
-}
-console.log(out);
-```
-
-Several rounds were lost shipping shapes that turned out not to read. This check takes a
-minute.
+`--ink` belongs to the backoffice and is a different colour. The marketing dark
+band is `--ink-surface`; the two collided once and the later definition silently
+won.
 
 ## Backoffice
 

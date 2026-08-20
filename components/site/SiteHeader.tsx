@@ -19,9 +19,9 @@ export default function SiteHeader() {
   }, []);
 
   return (
-    <header style={{ position: "sticky", top: 0, zIndex: 60, background: scrolled ? "#000" : "transparent", transition: "background .2s ease" }}>
-      <div className="wrap" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", height: 84, gap: 24 }}>
-        <Link href="/" aria-label="VALCA Tech home"><Logo size={26} dark /></Link>
+    <header style={{ position: "sticky", top: 0, zIndex: 60, background: scrolled ? "var(--paper)" : "transparent", transition: "background .2s ease" }}>
+      <div className="wrap" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", height: 72, gap: 24 }}>
+        <Link href="/" aria-label="VALCA Tech home"><Logo size={24} /></Link>
 
         <nav className="valca-desktop-nav" style={{ display: "flex", alignItems: "center", gap: 30 }}>
           {NAV.map((item) => (
@@ -34,14 +34,14 @@ export default function SiteHeader() {
           className="valca-menu-btn"
           onClick={() => setOpen((v) => !v)}
           aria-label={open ? "Close menu" : "Open menu"}
-          style={{ display: "none", background: "none", border: "none", color: "#fff", cursor: "pointer", padding: 0 }}
+          style={{ display: "none", background: "none", border: "none", color: "var(--ink-head)", cursor: "pointer", padding: 0 }}
         >
           {open ? <X size={24} /> : <Menu size={24} />}
         </button>
       </div>
 
       {open && (
-        <div style={{ background: "#000", padding: "12px 0 36px" }}>
+        <div style={{ background: "var(--paper)", padding: "12px 0 36px" }}>
           <div className="wrap" style={{ display: "flex", flexDirection: "column", gap: 24 }}>
             {NAV.map((item) => (
               <a key={item.href} href={item.href} className="nav-link" onClick={() => setOpen(false)}>{item.label}</a>
