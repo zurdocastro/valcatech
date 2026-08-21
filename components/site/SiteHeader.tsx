@@ -27,7 +27,7 @@ export default function SiteHeader() {
           {NAV.map((item) => (
             <a key={item.href} href={item.href} className="nav-link">{item.label}</a>
           ))}
-          <a href="#contact" className="pill">Start a project</a>
+          <a href="#contact" className="pill pill-nav">Contact</a>
         </nav>
 
         <button
@@ -46,7 +46,7 @@ export default function SiteHeader() {
             {NAV.map((item) => (
               <a key={item.href} href={item.href} className="nav-link" onClick={() => setOpen(false)}>{item.label}</a>
             ))}
-            <a href="#contact" className="pill" style={{ alignSelf: "flex-start" }} onClick={() => setOpen(false)}>Start a project</a>
+            <a href="#contact" className="pill pill-nav" style={{ alignSelf: "flex-start" }} onClick={() => setOpen(false)}>Start a project</a>
           </div>
         </div>
       )}

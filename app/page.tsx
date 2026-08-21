@@ -3,6 +3,7 @@ import SiteHeader from "@/components/site/SiteHeader";
 import ContactForm from "@/components/site/ContactForm";
 import ChatWidget from "@/components/site/ChatWidget";
 import Logo from "@/components/site/Logo";
+import DotField from "@/components/site/DotField";
 import { Reveal, StatCounter, Faq } from "@/components/site/ui";
 import { AGENTS, AGENTS_INTRO, BRAND, CAPABILITIES, CLOSING, FAQ, FOOTER_BLURB, HERO, NAV, PROCESS, STATS } from "@/lib/content";
 
@@ -14,26 +15,24 @@ export default function Home() {
     <div className="site">
       <SiteHeader />
 
-      {/* 1 — Hero */}
-      <section className="s-paper" style={{ paddingTop: 64, paddingBottom: 72 }}>
+      {/* 1 — Hero. Full viewport, centred over the speck field. */}
+      <section className="hero">
+        <DotField />
         <div className="wrap">
           <Reveal onLoad rotate={0}>
-            <p className="label" style={{ margin: "0 0 20px" }}>{HERO.label}</p>
-          </Reveal>
-          <Reveal onLoad rotate={0} delay={0.15}>
-            <h1 className="display" style={{ margin: 0, maxWidth: 900 }}>
+            <h1 className="display" style={{ margin: "0 auto" }}>
               {HERO.headline[0]}
               <br />
-              {HERO.headline[1]}
+              <span className="accent-purple">{HERO.headline[1]}</span>
             </h1>
           </Reveal>
-          <Reveal onLoad delay={0.4}>
-            <p className="lede" style={{ margin: "28px 0 0" }}>{HERO.body}</p>
+          <Reveal onLoad rotate={0} delay={0.3}>
+            <p className="lede" style={{ margin: "28px auto 0" }}>{HERO.body}</p>
           </Reveal>
-          <Reveal onLoad mask delay={0.9} style={{ marginTop: 32 }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 20, flexWrap: "wrap" }}>
+          <Reveal onLoad mask rotate={0} delay={0.7} style={{ marginTop: 36 }}>
+            <div className="hero-actions">
               <a href="#contact" className="pill">{HERO.cta}</a>
-              <a href="#what-we-do" className="ghost">{HERO.secondaryCta} →</a>
+              <a href="#what-we-do" className="pill pill-outline">{HERO.secondaryCta}</a>
             </div>
           </Reveal>
         </div>

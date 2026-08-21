@@ -18,7 +18,7 @@ export const HERO = {
     "Software, webapps, systems and integrations that interconnect complex operations — built around how your operation actually runs, delivered by engineers embedded in your business.",
   points: ["Custom software: value in weeks, not months", "AI agents: your code, your data"],
   cta: "Start a project",
-  secondaryCta: "See what we do",
+  secondaryCta: "See our work",
 };
 
 export const CAPABILITIES = [
