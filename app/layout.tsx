@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Inter, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
+import { DEFAULT_LOCALE } from "@/lib/content";
 
 // Inter substitutes for geomanist. Weight 300 is load-bearing: the reference
 // sets 48–82px display type at 300, so headlines carry by size, not thickness.
@@ -47,7 +48,7 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" className={`${inter.variable} ${mono.variable}`}>
+    <html lang={DEFAULT_LOCALE} className={`${inter.variable} ${mono.variable}`}>
       <body>{children}</body>
     </html>
   );

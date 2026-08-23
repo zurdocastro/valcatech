@@ -4,14 +4,16 @@ import gsap from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
 import { DrawSVGPlugin } from "gsap/DrawSVGPlugin";
 import { MotionPathPlugin } from "gsap/MotionPathPlugin";
-import { OPS_CORE, OPS_NODES } from "@/lib/content";
 import { CORE, NODE, POS, VB, edgePath } from "@/lib/ops-graph";
 
 gsap.registerPlugin(ScrollTrigger, DrawSVGPlugin, MotionPathPlugin);
 
 // Cropped to the graph's real extent — a 600x520 box left dead margin above
 // and below, which scaled the whole diagram down inside its column.
-export default function OpsCanvas() {
+type OpsCore = { label: string; sub: string };
+type OpsNode = { label: string; sub: string };
+
+export default function OpsCanvas({ core, nodes: opsNodes }: { core: OpsCore; nodes: OpsNode[] }) {
   const rootRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -108,7 +110,7 @@ export default function OpsCanvas() {
       <svg
         viewBox={`${VB.x} ${VB.y} ${VB.w} ${VB.h}`}
         role="img"
-        aria-label={`Diagram: ${OPS_NODES.map((n) => n.label).join(", ")} all wired into ${OPS_CORE.label}.`}
+        aria-label={`${opsNodes.map((n) => n.label).join(", ")} → ${core.label}`}
       >
         <defs>
           <linearGradient id="ops-current" x1="0" y1="0" x2="1" y2="1">
@@ -147,17 +149,17 @@ export default function OpsCanvas() {
               stroke="rgba(184,255,46,.34)"
             />
             <text x={CORE.x} y={CORE.y - 4} className="ops-core-label" textAnchor="middle">
-              {OPS_CORE.label}
+              {core.label}
             </text>
             <text x={CORE.x} y={CORE.y + 14} className="ops-core-sub" textAnchor="middle">
-              {OPS_CORE.sub}
+              {core.sub}
             </text>
             <circle cx={CORE.x - CORE.w / 2} cy={CORE.y} r="3" fill="#b9a6ff" />
             <circle cx={CORE.x + CORE.w / 2} cy={CORE.y} r="3" fill="#b9a6ff" />
           </g>
 
           {/* Systems */}
-          {OPS_NODES.map((n, i) => {
+          {opsNodes.map((n, i) => {
             const p = POS[i];
             return (
               <g className="ops-node" key={n.label}>

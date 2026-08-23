@@ -606,3 +606,24 @@ html:has(.site) { background: var(--void); }
   letter-spacing: .07em;
   text-transform: uppercase;
 }
+
+/* Language switch. Reads as instrumentation, not as a third action colour —
+   the active locale is marked by contrast, never by the signal colour. */
+.site .lang-switch {
+  display: inline-flex;
+  align-items: center;
+  border: 1px solid var(--edge);
+  border-radius: 8px;
+  overflow: hidden;
+}
+.site .lang-opt {
+  font-family: var(--font-mono-real), ui-monospace, monospace;
+  font-size: 11px;
+  letter-spacing: .08em;
+  padding: 6px 10px;
+  color: var(--t-mute);
+  line-height: 1;
+}
+.site .lang-opt + .lang-opt { border-left: 1px solid var(--edge); }
+.site .lang-opt:hover { color: var(--t-hi); }
+.site .lang-opt.is-active { background: var(--surface-3); color: var(--t-hi); }

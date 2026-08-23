@@ -2,9 +2,9 @@ import Anthropic from "@anthropic-ai/sdk";
 import { db } from "@/lib/db";
 import { sendLeadNotification } from "@/lib/email";
 import type { ChatSession } from "@/app/generated/prisma/client";
-import { AGENTS, AGENTS_INTRO, BRAND, CAPABILITIES, FAQ, PROCESS } from "@/lib/content";
+import { BRAND, getContent, type Locale } from "@/lib/content";
 
-export type Locale = "en" | "es";
+export type { Locale };
 
 // Graceful no-op until a key is supplied, matching lib/email.ts's pattern —
 // the widget/route degrade to a "chat unavailable" message instead of
@@ -37,14 +37,17 @@ export function detectLocale(text: string, fallback: Locale): Locale {
 // The knowledge base is generated from lib/content.ts — the same constants the
 // marketing page renders — so the agent can never describe a service the site
 // doesn't advertise, and never goes stale when the copy changes.
-function knowledgeBase() {
-  const services = CAPABILITIES.map(
+// Built from the reply's own language so the agent quotes the site's wording
+// back to the visitor rather than translating it on the fly.
+function knowledgeBase(locale: Locale) {
+  const c = getContent(locale);
+  const services = c.capabilities.map(
     (g) => `${g.group}:\n${g.items.map((i) => `- ${i.title}: ${i.body}`).join("\n")}`
   ).join("\n\n");
-  const agents = AGENTS.map((a) => `- ${a.name} (${a.category}): ${a.body}`).join("\n");
-  const process = PROCESS.map((p) => `${p.step} ${p.title}: ${p.body}`).join("\n");
-  const faq = FAQ.map((f) => `Q: ${f.q}\nA: ${f.a}`).join("\n\n");
-  return `SERVICES\n${services}\n\nAGENT STACK\n${AGENTS_INTRO}\n${agents}\n\nPROCESS\n${process}\n\nFAQ\n${faq}\n\nCONTACT\nEmail: ${BRAND.email} · WhatsApp: ${BRAND.phone} · ${BRAND.location}`;
+  const agents = c.agents.map((a) => `- ${a.name} (${a.category}): ${a.body}`).join("\n");
+  const process = c.process.map((p) => `${p.step} ${p.title}: ${p.body}`).join("\n");
+  const faq = c.faq.map((f) => `Q: ${f.q}\nA: ${f.a}`).join("\n\n");
+  return `SERVICES\n${services}\n\nAGENT STACK\n${c.agentsIntro}\n${agents}\n\nPROCESS\n${process}\n\nFAQ\n${faq}\n\nCONTACT\nEmail: ${BRAND.email} · WhatsApp: ${BRAND.phone} · ${BRAND.location}`;
 }
 
 async function buildSystemPrompt(locale: Locale): Promise<string> {
@@ -95,7 +98,7 @@ ${rules}
 ${settings?.agentInfo ? `\n${infoLabel}\n${settings.agentInfo}` : ""}
 ${corrections ? `\n${correctionsLabel}\n${corrections}` : ""}
 
-${knowledgeBase()}
+${knowledgeBase(locale)}
 
 ${languageRule}`;
 }
