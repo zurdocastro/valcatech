@@ -20,7 +20,7 @@ const mono = JetBrains_Mono({
   display: "swap",
 });
 
-const BASE_URL = (process.env.NEXT_PUBLIC_APP_URL || "https://valcatech.com").replace(/\/$/, "");
+const BASE_URL = (process.env.NEXT_PUBLIC_APP_URL || "https://valcastech.com").replace(/\/$/, "");
 
 export const metadata: Metadata = {
   metadataBase: new URL(BASE_URL),

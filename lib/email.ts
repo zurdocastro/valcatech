@@ -10,7 +10,7 @@ export function getResend() {
 // "From" stays the branded address, but a customer hitting Reply needs to land
 // somewhere a human actually reads.
 export const SUPPORT_EMAIL = process.env.SUPPORT_EMAIL || BRAND.email;
-export const FROM_EMAIL = process.env.RESEND_FROM || `VALCAS Tech <hello@valcatech.com>`;
+export const FROM_EMAIL = process.env.RESEND_FROM || `VALCAS Tech <hello@valcastech.com>`;
 
 const DARK = {
   void: "#000000",

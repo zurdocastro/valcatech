@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { DEFAULT_LOCALE, LOCALES, getContent, isLocale } from "@/lib/content";
 import { notFound } from "next/navigation";
 
-const BASE_URL = (process.env.NEXT_PUBLIC_APP_URL || "https://valcatech.com").replace(/\/$/, "");
+const BASE_URL = (process.env.NEXT_PUBLIC_APP_URL || "https://valcastech.com").replace(/\/$/, "");
 
 export function generateStaticParams() {
   return LOCALES.map((locale) => ({ locale }));
