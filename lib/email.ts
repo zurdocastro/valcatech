@@ -10,7 +10,7 @@ export function getResend() {
 // "From" stays the branded address, but a customer hitting Reply needs to land
 // somewhere a human actually reads.
 export const SUPPORT_EMAIL = process.env.SUPPORT_EMAIL || BRAND.email;
-export const FROM_EMAIL = process.env.RESEND_FROM || `VALCA Tech <hello@valcatech.com>`;
+export const FROM_EMAIL = process.env.RESEND_FROM || `VALCAS Tech <hello@valcatech.com>`;
 
 const DARK = {
   void: "#000000",
@@ -28,12 +28,12 @@ function shell(inner: string, headerImageUrl?: string) {
   <div style="max-width:560px;margin:0 auto;background:${DARK.panel};border-radius:24px;padding:40px">
     <div style="margin-bottom:28px">
       ${headerImageUrl
-        ? `<img src="${headerImageUrl}" alt="VALCA Tech" height="28" style="display:block;height:28px" />`
-        : `<span style="font-weight:500;font-size:18px;color:${DARK.text};letter-spacing:-0.02em">VALCA<span style="color:${DARK.iris}"> Tech</span></span>`}
+        ? `<img src="${headerImageUrl}" alt="VALCAS Tech" height="28" style="display:block;height:28px" />`
+        : `<span style="font-weight:500;font-size:18px;color:${DARK.text};letter-spacing:-0.02em">VALCAS<span style="color:${DARK.iris}"> Tech</span></span>`}
     </div>
     ${inner}
     <p style="margin:32px 0 0;color:#6E6E76;font-size:12px;text-align:center">
-      VALCA Tech — AI Solutions Firm. ${BRAND.location}
+      VALCAS Tech — AI Solutions Firm. ${BRAND.location}
     </p>
   </div>
 </body>
@@ -111,7 +111,7 @@ export async function sendLeadAcknowledgement(opts: { to: string; name: string }
     from: FROM_EMAIL,
     replyTo: SUPPORT_EMAIL,
     to: opts.to,
-    subject: "We got your message — VALCA Tech",
+    subject: "We got your message — VALCAS Tech",
     html: shell(`
       <h1 style="margin:0 0 14px;font-size:28px;font-weight:400;letter-spacing:-0.03em;color:${DARK.text}">Thanks, ${escapeHtml(opts.name)}.</h1>
       <p style="margin:0 0 24px;color:${DARK.muted};font-size:16px;line-height:1.6">

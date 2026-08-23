@@ -18,14 +18,14 @@ function getVisitorId() {
 
 const COPY = {
   en: {
-    title: "VALCA Assistant",
+    title: "VALCAS Assistant",
     placeholder: "What are you trying to build or automate?",
     greeting: "Hi — tell me what you're trying to build or automate and I'll tell you how we'd approach it. I can also set up your free discovery call.",
     send: "Send",
     error: "Something went wrong. Please try again.",
   },
   es: {
-    title: "Asistente VALCA",
+    title: "Asistente VALCAS",
     placeholder: "¿Qué querés construir o automatizar?",
     greeting: "Hola — contame qué querés construir o automatizar y te digo cómo lo abordaríamos. También te puedo agendar el descubrimiento gratuito.",
     send: "Enviar",

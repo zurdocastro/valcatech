@@ -25,16 +25,16 @@ const BASE_URL = (process.env.NEXT_PUBLIC_APP_URL || "https://valcatech.com").re
 export const metadata: Metadata = {
   metadataBase: new URL(BASE_URL),
   title: {
-    default: "VALCA Tech — AI Solutions Firm",
-    template: "%s | VALCA Tech",
+    default: "VALCAS Tech — AI Solutions Firm",
+    template: "%s | VALCAS Tech",
   },
   description:
     "Custom software and AI agents — webapps, systems and integrations that interconnect complex operations. Born in Costa Rica, working from the USA to Argentina. Your code, your data.",
   openGraph: {
-    title: "VALCA Tech — AI Solutions Firm",
+    title: "VALCAS Tech — AI Solutions Firm",
     description: "Custom software and AI agents that interconnect complex operations. Value in weeks, not months.",
     url: BASE_URL,
-    siteName: "VALCA Tech",
+    siteName: "VALCAS Tech",
     type: "website",
   },
   icons: { icon: "/favicon.svg" },

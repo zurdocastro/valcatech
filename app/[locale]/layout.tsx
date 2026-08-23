@@ -28,7 +28,7 @@ export async function generateMetadata({ params }: { params: Promise<{ locale: s
       title: c.meta.title,
       description: c.meta.description,
       url: `${BASE_URL}/${locale}`,
-      siteName: "VALCA Tech",
+      siteName: "VALCAS Tech",
       locale: locale === "es" ? "es_CR" : "en_US",
       type: "website",
     },

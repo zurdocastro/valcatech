@@ -14,7 +14,7 @@ export default function Logo({ size = 32, dark = false, wordmark = true }: { siz
       </svg>
       {wordmark && (
         <span style={{ fontWeight: 400, fontSize: size * 0.68, color: dark ? "#FAF9F5" : "var(--t-hi)", letterSpacing: "-0.03em" }}>
-          VALCA<span style={{ color: dark ? "rgba(250,249,245,.55)" : "var(--t-mute)" }}> Tech</span>
+          VALCAS<span style={{ color: dark ? "rgba(250,249,245,.55)" : "var(--t-mute)" }}> Tech</span>
         </span>
       )}
     </span>

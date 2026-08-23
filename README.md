@@ -1,6 +1,6 @@
-# VALCA Tech
+# VALCAS Tech
 
-Marketing site and lead backoffice for VALCA Tech, an AI solutions firm.
+Marketing site and lead backoffice for VALCAS Tech, an AI solutions firm.
 
 **Live:** [valcatech.vercel.app](https://valcatech.vercel.app) · Backoffice at `/admin`
 

@@ -58,7 +58,7 @@ export default function SiteHeader({ locale }: { locale: Locale }) {
       }}
     >
       <div className="wrap" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", height: 66, gap: 24 }}>
-        <Link href={`/${locale}`} aria-label={`${c.tagline} — VALCA Tech`}><Logo size={24} /></Link>
+        <Link href={`/${locale}`} aria-label={`${c.tagline} — VALCAS Tech`}><Logo size={24} /></Link>
 
         <nav className="valca-desktop-nav" style={{ display: "flex", alignItems: "center", gap: 28 }}>
           {c.nav.map((item) => (

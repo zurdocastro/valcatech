@@ -30,11 +30,11 @@ export function swapLocalePath(pathname: string, next: Locale): string {
 
 // Facts that do not translate.
 export const BRAND = {
-  name: "VALCA Tech",
+  name: "VALCAS Tech",
   tagline: "AI Solutions Firm",
-  email: "hello@valcatech.com",
-  phone: "+506 6419-0202",
-  whatsapp: "50664190202",
+  email: "valcastech@gmail.com",
+  phone: "+506 7097-8298",
+  whatsapp: "50670978298",
   location: "Costa Rica · USA → Argentina",
 };
 
@@ -45,7 +45,7 @@ const en = {
   // The hero graph. These are the systems a real operation already runs on —
   // naming them is what makes the diagram legible in two seconds instead of
   // reading as abstract decoration.
-  opsCore: { label: "VALCA", sub: "agents + integrations" },
+  opsCore: { label: "VALCAS", sub: "agents + integrations" },
   opsNodes: [
     { label: "ORDERS", sub: "rest api" },
     { label: "PAYMENTS", sub: "onvo · 3ds" },
@@ -73,7 +73,7 @@ const en = {
     build: { num: "01", label: "What we build", heading: "Two kinds of work, one operation." },
     agents: { num: "02", label: "The agent stack", heading: "One agent per problem." },
     process: { num: "03", label: "How we work", heading: "Four steps, no surprises." },
-    proof: { num: "04", label: "Why VALCA Tech" },
+    proof: { num: "04", label: "Why VALCAS Tech" },
     faq: { num: "05", label: "Questions", heading: "Asked before you ask." },
   },
 
@@ -183,7 +183,7 @@ const en = {
   },
 
   meta: {
-    title: "VALCA Tech — AI Solutions Firm",
+    title: "VALCAS Tech — AI Solutions Firm",
     description:
       "Custom software and AI agents — webapps, systems and integrations that connect complex operations. Born in Costa Rica, working from the USA to Argentina. Your code, your data.",
   },
@@ -193,7 +193,7 @@ const es: typeof en = {
   tagline: "Software a la medida y agentes de IA",
   localeName: "Español",
 
-  opsCore: { label: "VALCA", sub: "agentes + integraciones" },
+  opsCore: { label: "VALCAS", sub: "agentes + integraciones" },
   opsNodes: [
     { label: "PEDIDOS", sub: "api rest" },
     { label: "PAGOS", sub: "onvo · 3ds" },
@@ -221,7 +221,7 @@ const es: typeof en = {
     build: { num: "01", label: "Qué construimos", heading: "Dos tipos de trabajo, una sola operación." },
     agents: { num: "02", label: "El stack de agentes", heading: "Un agente por problema." },
     process: { num: "03", label: "Cómo trabajamos", heading: "Cuatro pasos, sin sorpresas." },
-    proof: { num: "04", label: "Por qué VALCA Tech" },
+    proof: { num: "04", label: "Por qué VALCAS Tech" },
     faq: { num: "05", label: "Preguntas", heading: "Resueltas antes de que preguntes." },
   },
 
@@ -331,7 +331,7 @@ const es: typeof en = {
   },
 
   meta: {
-    title: "VALCA Tech — Software a la medida y agentes de IA",
+    title: "VALCAS Tech — Software a la medida y agentes de IA",
     description:
       "Software a la medida y agentes de IA — webapps, sistemas e integraciones que conectan operaciones complejas. Nacimos en Costa Rica y trabajamos desde Estados Unidos hasta Argentina. Tu código, tus datos.",
   },
