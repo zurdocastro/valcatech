@@ -53,14 +53,21 @@ export default function DotField() {
     let h = 0;
     let visible = true;
 
+    // Size from the canvas's own box, never from window.innerWidth: an element
+    // that mounts at zero size (a collapsed pane, a hidden parent) would
+    // otherwise stay 0x0 forever, since only a resize event could rescue it.
     function build() {
+      const rect = canvas!.getBoundingClientRect();
+      if (!rect.width || !rect.height) return false;
       const dpr = Math.min(window.devicePixelRatio || 1, 2);
-      w = window.innerWidth;
-      h = window.innerHeight;
-      canvas!.width = w * dpr;
-      canvas!.height = h * dpr;
-      canvas!.style.width = `${w}px`;
-      canvas!.style.height = `${h}px`;
+      const bw = Math.round(rect.width * dpr);
+      const bh = Math.round(rect.height * dpr);
+      // Two paths call this (see below); skip the work when nothing changed.
+      if (bw === canvas!.width && bh === canvas!.height) return false;
+      w = rect.width;
+      h = rect.height;
+      canvas!.width = bw;
+      canvas!.height = bh;
       ctx!.setTransform(dpr, 0, 0, dpr, 0, 0);
 
       // One speck per ~3200px² keeps the field readable as texture. Denser and
@@ -76,6 +83,7 @@ export default function DotField() {
         phase: rand() * Math.PI * 2,
         drift: 0.5 + rand() * 1.8,
       }));
+      return true;
     }
 
     function render(t: number) {
@@ -108,11 +116,14 @@ export default function DotField() {
       if (!reduced) raf = requestAnimationFrame(loop);
     }
 
-    // Paint one frame synchronously: a tab opened in the background has rAF
-    // throttled off and would otherwise show an empty canvas until focused.
-    build();
-    render(performance.now());
-    start();
+    // Paint one frame synchronously on every (re)build: a tab opened in the
+    // background has rAF throttled off and would otherwise show an empty
+    // canvas until focused.
+    function rebuild() {
+      if (!build()) return;
+      render(performance.now());
+      if (visible) start();
+    }
 
     const io = new IntersectionObserver(([entry]) => {
       visible = entry.isIntersecting;
@@ -121,20 +132,21 @@ export default function DotField() {
     });
     io.observe(canvas);
 
-    let resizeTimer = 0;
-    const onResize = () => {
-      window.clearTimeout(resizeTimer);
-      resizeTimer = window.setTimeout(() => {
-        build();
-        render(performance.now());
-        if (visible) start();
-      }, 150);
-    };
-    window.addEventListener("resize", onResize);
+    // Two resize paths, because neither covers the other's gap. ResizeObserver
+    // catches the zero-to-real transition when the canvas mounts inside a
+    // collapsed box, which a window resize event never reports; but RO is
+    // delivered with the rendering steps, so a hidden tab starves it. The
+    // window listener still fires there. build() is idempotent, so the overlap
+    // costs nothing.
+    const ro = new ResizeObserver(rebuild);
+    ro.observe(canvas);
+    window.addEventListener("resize", rebuild);
+
+    rebuild();
 
     return () => {
-      window.removeEventListener("resize", onResize);
-      window.clearTimeout(resizeTimer);
+      window.removeEventListener("resize", rebuild);
+      ro.disconnect();
       io.disconnect();
       cancelAnimationFrame(raf);
     };
