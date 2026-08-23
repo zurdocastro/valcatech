@@ -135,6 +135,21 @@ Things that have already cost time here.
   double-invokes regardless.
 - **`requestAnimationFrame` is paused in background tabs**, so canvas and GSAP work stops.
   The canvas paints one frame synchronously on mount to cover that.
+- **`ResizeObserver` is starved in a hidden tab too** — it is delivered with the rendering
+  steps. `DotField` keeps a `window.resize` listener beside the observer for that reason.
+  Neither fires in the automated browser, so the resize path cannot be verified there;
+  dispatch a synthetic `resize` to exercise the handler instead.
+- **Never verify canvas or GSAP work from a screenshot.** The automated browser reports
+  `document.hidden: true`, so tweens freeze at their start values and the copy looks
+  missing when it is fine. Measure the DOM, or force `.reveal` elements to
+  `transform: none; opacity: 1` before capturing. To prove canvas paint order, fill the
+  canvas with a solid colour and check whether the text survives.
+- **`bun run build` clobbers the dev server's `.next/`.** The running server then serves
+  stale HTML indefinitely and your edits look like they did not apply. Stop the preview
+  before building, or `rm -rf .next` and restart it.
+- **A positioned canvas paints above in-flow text.** `position: fixed` with `z-index: 0`
+  still outranks non-positioned content, so `.hero .wrap` carries `position: relative;
+  z-index: 1` to keep the copy above the speck field.
 - **Test files sit next to their source** as `*.test.ts`. See `TESTING.md`.
 
 ## Conventions
