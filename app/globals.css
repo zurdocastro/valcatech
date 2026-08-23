@@ -462,8 +462,10 @@ input, select, textarea, button { font-family: inherit; color: inherit; }
   padding: 120px 0 90px;
 }
 /* The hero centres its children, which would otherwise shrink .wrap to its
-   content width and strand its max-width. */
-.hero .wrap { width: 100%; }
+   content width and strand its max-width. The z-index is load-bearing: the
+   speck canvas is positioned, so without it the specks paint over the copy
+   rather than behind it. */
+.hero .wrap { width: 100%; position: relative; z-index: 1; }
 .hero .lede { max-width: 640px; margin-inline: auto; }
 .hero .display { max-width: 15ch; }
 .accent-purple { color: var(--purple-mid); }
