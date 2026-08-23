@@ -64,7 +64,7 @@ const en = {
     secondaryCta: "See the agent stack",
     metrics: [
       { value: "20+", label: "systems shipped" },
-      { value: "6 wks", label: "typical first release" },
+      { value: "3 wks", label: "typical first release" },
       { value: "100%", label: "code stays yours" },
     ],
   },
@@ -212,7 +212,7 @@ const es: typeof en = {
     secondaryCta: "Ver los agentes",
     metrics: [
       { value: "20+", label: "sistemas entregados" },
-      { value: "6 sem", label: "primera entrega típica" },
+      { value: "3 sem", label: "primera entrega típica" },
       { value: "100%", label: "el código es tuyo" },
     ],
   },
