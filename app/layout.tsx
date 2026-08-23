@@ -1,13 +1,21 @@
 import type { Metadata, Viewport } from "next";
-import { Inter } from "next/font/google";
+import { Inter, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
 
-// Inter is the documented substitute for PPNeueMontreal — weight 200 carries
-// body copy and 400 carries every headline, per the design system.
+// Inter substitutes for geomanist. Weight 300 is load-bearing: the reference
+// sets 48–82px display type at 300, so headlines carry by size, not thickness.
 const inter = Inter({
   subsets: ["latin"],
-  weight: ["200", "400", "600", "700"],
+  weight: ["300", "400", "500", "600"],
   variable: "--font-display",
+  display: "swap",
+});
+
+// Technical data only — node labels, metrics, terminal output. Never prose.
+const mono = JetBrains_Mono({
+  subsets: ["latin"],
+  weight: ["400", "500"],
+  variable: "--font-mono-real",
   display: "swap",
 });
 
@@ -34,12 +42,12 @@ export const metadata: Metadata = {
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
-  themeColor: "#000000",
+  themeColor: "#0e0918",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" className={inter.variable}>
+    <html lang="en" className={`${inter.variable} ${mono.variable}`}>
       <body>{children}</body>
     </html>
   );

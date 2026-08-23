@@ -87,8 +87,8 @@ export default function ChatWidget({ locale = "en" }: { locale?: Locale }) {
 
   const bubble = (mine: boolean): React.CSSProperties => ({
     alignSelf: mine ? "flex-end" : "flex-start",
-    background: mine ? "var(--lime)" : "rgba(255,255,255,.08)",
-    color: mine ? "var(--ink-head)" : "#E6E3DC",
+    background: mine ? "var(--signal)" : "rgba(255,255,255,.06)",
+    color: mine ? "#12200a" : "var(--t-body)",
     borderRadius: 16,
     padding: "10px 14px",
     fontSize: 14,
@@ -105,7 +105,7 @@ export default function ChatWidget({ locale = "en" }: { locale?: Locale }) {
         aria-label={c.title}
         style={{
           position: "fixed", bottom: 24, right: 24, zIndex: 200, width: 56, height: 56, borderRadius: "50%",
-          background: "var(--lime)", border: "none", cursor: "pointer",
+          background: "var(--signal)", border: "none", cursor: "pointer",
           display: "flex", alignItems: "center", justifyContent: "center",
           transition: "transform 0.2s ease",
         }}
@@ -133,7 +133,7 @@ export default function ChatWidget({ locale = "en" }: { locale?: Locale }) {
             {messages.map((m, i) => (
               <div key={i} style={bubble(m.role === "user")}>{m.body}</div>
             ))}
-            {loading && <div style={{ ...bubble(false), color: "var(--ink-muted-on-dark)" }}>···</div>}
+            {loading && <div style={{ ...bubble(false), color: "var(--t-mute)" }}>···</div>}
           </div>
 
           <form onSubmit={handleSubmit} style={{ display: "flex", alignItems: "flex-end", gap: 10, padding: "12px 16px 16px" }}>
@@ -149,7 +149,7 @@ export default function ChatWidget({ locale = "en" }: { locale?: Locale }) {
               type="submit"
               aria-label={c.send}
               disabled={loading || !input.trim()}
-              className="pill"
+              className="btn btn-signal"
               style={{ padding: 12, borderRadius: "50%" }}
             >
               <Send size={16} />

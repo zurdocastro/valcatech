@@ -183,8 +183,8 @@ export function StatCounter({ value, prefix = "", suffix = "", label }: { value:
 
   return (
     <div ref={ref}>
-      <div className="h-sm" style={{ margin: 0 }}>{prefix}{n}{suffix}</div>
-      <div className="body-muted" style={{ marginTop: 6 }}>{label}</div>
+      <div className="stat-value">{prefix}{n}{suffix}</div>
+      <div className="metric-label">{label}</div>
     </div>
   );
 }
@@ -202,8 +202,8 @@ export function Faq({ items }: { items: { q: string; a: string }[] }) {
             className="faq-q"
             style={{ width: "100%", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 24, background: "none", border: "none", padding: "30px 0", cursor: "pointer", textAlign: "left" }}
           >
-            <span className="h-2xs" style={{ color: open === i ? "var(--ink-head)" : "var(--ink-muted)" }}>{item.q}</span>
-            <span aria-hidden className="faq-plus" style={{ flexShrink: 0, color: "var(--ink-head)", fontSize: 24, lineHeight: 1, transform: open === i ? "rotate(45deg)" : "none" }}>+</span>
+            <span className="h-2xs" style={{ color: open === i ? "var(--t-hi)" : "var(--t-mute)" }}>{item.q}</span>
+            <span aria-hidden className="faq-plus" style={{ flexShrink: 0, color: "var(--signal)", fontSize: 24, lineHeight: 1, transform: open === i ? "rotate(45deg)" : "none" }}>+</span>
           </button>
           <div style={{ display: "grid", gridTemplateRows: open === i ? "1fr" : "0fr", transition: "grid-template-rows .6s cubic-bezier(.19,1,.22,1)" }}>
             <div style={{ overflow: "hidden" }}>

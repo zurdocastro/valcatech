@@ -11,96 +11,119 @@ export const BRAND = {
   location: "Costa Rica · USA → Argentina",
 };
 
+// The hero graph. These are the systems a real operation already runs on —
+// naming them is what makes the diagram legible in two seconds instead of
+// reading as abstract decoration.
+export const OPS_CORE = { label: "VALCA", sub: "agents + integrations" };
+
+export const OPS_NODES = [
+  { label: "ORDERS", sub: "rest api" },
+  { label: "PAYMENTS", sub: "onvo · 3ds" },
+  { label: "INVENTORY", sub: "two-way sync" },
+  { label: "WHATSAPP", sub: "webhook" },
+  { label: "SCHEDULING", sub: "multi-site" },
+  { label: "ERP", sub: "dynamics" },
+];
+
 export const HERO = {
-  label: "AI Solutions Firm",
-  headline: ["AI Solutions", "Firm."],
+  status: "Free discovery · answer in under 24h",
+  headline: ["We wire your", "operation together."],
   body:
-    "Software, webapps, systems and integrations that interconnect complex operations — built around how your operation actually runs, delivered by engineers embedded in your business.",
-  points: ["Custom software: value in weeks, not months", "AI agents: your code, your data"],
+    "Custom software and AI agents that connect what your business already runs on — orders, 3DS payments, inventory, scheduling, your ERP. Built by engineers who learn your process before writing a line.",
   cta: "Start a project",
-  secondaryCta: "See our work",
+  secondaryCta: "See the agent stack",
+  // Read as live telemetry under the hero, in mono. Facts, not slogans.
+  metrics: [
+    { value: "20+", label: "systems shipped" },
+    { value: "6 wks", label: "typical first release" },
+    { value: "100%", label: "code stays yours" },
+  ],
 };
 
 export const CAPABILITIES = [
   {
     group: "Custom software",
     items: [
-      { title: "E-commerce & stores", body: "Custom storefronts with product variants, inventory and 3D-Secure card checkout — not a template." },
-      { title: "Client & member portals", body: "Logins, gated content, progress tracking and private member areas for your users." },
-      { title: "Backoffice & dashboards", body: "Run inventory, orders and metrics from one admin panel built around your team's workflow." },
-      { title: "Booking & price calculators", body: "Scheduling, dynamic pricing and pay-in-three-steps flows that turn visits into bookings." },
+      { title: "E-commerce & stores", body: "Storefronts with variants, inventory and 3D-Secure card checkout. Built for your catalogue, not bent out of a template." },
+      { title: "Client & member portals", body: "Logins, gated content, progress tracking and private member areas your users actually return to." },
+      { title: "Backoffice & dashboards", body: "Inventory, orders and metrics in one admin panel shaped around how your team already works." },
+      { title: "Booking & price calculators", body: "Multi-site scheduling, dynamic pricing and pay-in-three-steps flows that turn a visit into a booking." },
     ],
   },
   {
     group: "Automation",
     items: [
-      { title: "Recurring payments & 3DS", body: "Subscriptions and billing with ONVO, Stripe and SINPE — 3D-Secure, automated and reconciled." },
-      { title: "Communities & memberships", body: "Membership access, live events and cohort-based programs that keep members coming back." },
-      { title: "AI agents", body: "Voice, support and sales agents working 24/7 across your systems, trained on your processes." },
-      { title: "Flows, CRM & messaging", body: "Automated email and WhatsApp, reminders and follow-up sequences that never drop a lead." },
+      { title: "Payments & 3DS", body: "Subscriptions, billing and reconciliation across ONVO, Stripe and SINPE — 3D-Secure, automated, and matched at the end of the month." },
+      { title: "Communities & memberships", body: "Membership tiers, live events and cohort programs, with the access rules enforced in code." },
+      { title: "AI agents", body: "Voice, support and sales agents running on your data and your processes, inside your infrastructure." },
+      { title: "Flows, CRM & messaging", body: "Email and WhatsApp sequences, reminders and follow-ups that never quietly drop a lead." },
     ],
   },
 ];
 
 export const AGENTS_INTRO =
-  "Schedule chaos, lost clients, manual follow-ups, endless reconciliations — we've built end-to-end platforms that solve real operational problems. The agent stack gives you the right AI partner for each one.";
+  "Schedule chaos, leads that go cold, manual follow-ups, reconciliations that eat a week every month. Each of these has a specific agent behind it — not one chatbot pointed at every problem.";
 
 export const AGENTS = [
-  { name: "Data Intake Agent", category: "Ops", body: "Turns unstructured inputs — emails, PDFs, forms — into structured operational data, automatically." },
-  { name: "Conciliation Agent", category: "Ops", body: "Reconciles financial records automatically across systems, invoices and data sources." },
-  { name: "Logistics Agent", category: "Ops", body: "Tracks shipments, routes and inventory in real time — flagging issues before they cost you." },
-  { name: "Social Media Manager Agent", category: "Content", body: "Keeps a consistent, high-performing social presence running on autopilot." },
-  { name: "Content Creation Agent", category: "Content", body: "Produces high-quality content across every channel — automatically and at scale." },
-  { name: "Outbound Prospecting Agent", category: "Sales", body: "Scales outbound prospecting from targeting to qualification, hands-free." },
-  { name: "Quoting Agent", category: "Sales", body: "Generates optimized quotes in minutes, with consistent pricing and protected margins." },
-  { name: "Lead & Sales Qualification Agent", category: "Sales", body: "Captures, qualifies and validates leads automatically — before your team touches them." },
-  { name: "Sales Agent", category: "Sales", body: "Runs the full motion — outreach, follow-up and closing prep — on autopilot." },
-  { name: "Knowledge Management Agent", category: "Support", body: "Instant answers, always available — scale support without adding headcount." },
-  { name: "Support Agent", category: "Support", body: "Resolves tickets across your platforms — chat, email and help center — instantly." },
-  { name: "Voice Agent", category: "Voice", body: "Answers calls, books and qualifies in natural conversation — working 24/7." },
+  { name: "Data Intake Agent", category: "Ops", body: "Turns emails, PDFs and forms into structured operational data, without anyone retyping it." },
+  { name: "Conciliation Agent", category: "Ops", body: "Reconciles financial records across systems, invoices and data sources, and flags what does not match." },
+  { name: "Logistics Agent", category: "Ops", body: "Tracks shipments, routes and stock in real time, raising issues before they cost you a delivery." },
+  { name: "Social Media Manager Agent", category: "Content", body: "Keeps a consistent posting cadence running across channels without a standing meeting." },
+  { name: "Content Creation Agent", category: "Content", body: "Produces channel-ready content at volume, in a voice you approve once and reuse." },
+  { name: "Outbound Prospecting Agent", category: "Sales", body: "Runs targeting through qualification, so your team only sees prospects worth a call." },
+  { name: "Quoting Agent", category: "Sales", body: "Builds quotes in minutes with consistent pricing and margins that hold." },
+  { name: "Lead Qualification Agent", category: "Sales", body: "Captures, qualifies and validates leads before anyone on your side touches them." },
+  { name: "Sales Agent", category: "Sales", body: "Handles outreach, follow-up and closing prep end to end." },
+  { name: "Knowledge Management Agent", category: "Support", body: "Answers instantly from your own documentation, so support scales without headcount." },
+  { name: "Support Agent", category: "Support", body: "Resolves tickets across chat, email and your help center." },
+  { name: "Voice Agent", category: "Voice", body: "Answers the phone, books and qualifies in natural conversation, at 2am included." },
 ];
 
 export const STATS = [
-  { value: 20, suffix: "+", label: "projects shipped" },
+  { value: 20, suffix: "+", label: "systems shipped" },
   { value: 5, suffix: " yrs", label: "building" },
   { value: 100, suffix: "%", label: "you own the code" },
   { value: 24, prefix: "<", suffix: "h", label: "first response" },
 ];
 
 export const PROCESS = [
-  { step: "01", title: "Discovery", body: "We map your real process on the ground and find the true value of automating — free." },
-  { step: "02", title: "ROI-first proposal", body: "Pricing always comes from that consultation — scoped to real, tangible ROI." },
-  { step: "03", title: "Build", body: "Weekly sprints; tangible value in weeks, not months." },
-  { step: "04", title: "Implement & scale", body: "Deploy, integration with your operation, and support through the scale-up." },
+  { step: "01", title: "Discovery", body: "We map your real process on the ground and find where automating actually pays. Free, and it stays free if the answer is no." },
+  { step: "02", title: "ROI-first proposal", body: "Pricing comes out of that conversation, scoped to tangible return. You get it within 48 hours." },
+  { step: "03", title: "Build", body: "Weekly sprints against a running system. Something usable in weeks, not a demo in six months." },
+  { step: "04", title: "Implement & scale", body: "Deploy into your operation, integrate with what exists, and stay through the scale-up." },
 ];
 
 export const FAQ = [
   {
     q: "How long does a typical project take?",
-    a: "Most engagements ship something usable in the first few weeks. We work in weekly sprints, so you see tangible value in weeks, not months — a full platform typically lands in 6 to 12 weeks depending on scope.",
+    a: "Most engagements put something usable in your hands in the first few weeks. We work in weekly sprints, so you are never waiting on a big reveal — a full platform typically lands in 6 to 12 weeks depending on scope.",
   },
   {
     q: "Where are your clients based?",
-    a: "Born in Costa Rica, working from the USA to Argentina. We operate across the Americas and are used to distributed teams and time zones.",
+    a: "Born in Costa Rica, working from the USA down to Argentina. Distributed teams and split time zones are the normal case for us, not an exception.",
   },
   {
     q: "Can I see the code and keep it?",
-    a: "Always. Your code, your data, 100% yours. Everything we build lives in your repositories and your infrastructure — no lock-in, no black boxes.",
+    a: "Always. Everything we build lives in your repositories and your infrastructure. Your code, your data, 100% yours — no lock-in and nothing you cannot read.",
   },
   {
     q: "How do you price?",
-    a: "Pricing always comes out of the free discovery consultation and is scoped to real, tangible ROI. No generic rate cards — you get a proposal within 48 hours of that conversation.",
+    a: "Pricing comes out of the free discovery call and is scoped to real return, not a rate card. You get a proposal within 48 hours of that conversation.",
+  },
+  {
+    q: "What if we already have systems we cannot replace?",
+    a: "That is the normal starting point, and it is the work we are best at. We integrate with the ERP, the payment processor and the spreadsheet that somehow runs payroll — replacing them is a decision you make later, not a precondition.",
   },
 ];
 
 export const CLOSING = {
   tagline: "We don't wait — we build the region's technological future",
-  headline: "Let's build together.",
-  body: "The right solution at the right price. Free discovery, and an ROI-focused proposal within 48 hours.",
+  headline: "Let's wire it together.",
+  body: "Free discovery, and an ROI-focused proposal within 48 hours. If automating does not pay for your operation, we will tell you that instead.",
 };
 
 export const FOOTER_BLURB =
-  "A custom software company — AI agents, webapps, systems and integrations that interconnect complex operations. Born in Costa Rica, working from the USA to Argentina. Your code, your data, 100% yours.";
+  "A custom software company — AI agents, webapps, systems and integrations that connect complex operations. Born in Costa Rica, working from the USA to Argentina. Your code, your data, 100% yours.";
 
 export const NAV = [
   { href: "#what-we-do", label: "What we do" },

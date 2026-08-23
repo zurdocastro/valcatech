@@ -63,22 +63,40 @@
 }
 
 :root {
-  /* Palette measured from the reference site: warm off-white canvas, three
-     alternating surfaces, an acid-lime action colour and a lavender band. */
+  /* Canvas. The violet undertone is load-bearing: a neutral charcoal reads as
+     generic dark mode, this reads as technology. Never substitute #000 or grey. */
+  --void: #0e0918;
+  --surface-1: #1a1624;   /* cards, exactly one step above the void */
+  --surface-2: #1b1728;   /* large feature panels */
+  --surface-3: #2c2834;   /* ghost button fills */
+  --edge: #3e3a46;        /* hairline borders and dividers */
+
+  /* Text. Pure white is reserved for headings — at 15-16px it goes harsh
+     against the violet-black, so body copy sits in warm grey. */
+  --t-hi: #ffffff;
+  --t-body: #d1cece;
+  --t-mute: #9d9797;
+
+  /* SIGNAL. Holds the terminal-green role: action, status, live values.
+     Never a background, never decorative, never a section fill. */
+  --signal: #b8ff2e;
+  --signal-ground: #1c2b06;  /* filled-action ground, so lime text can sit on it */
+
+  /* CURRENT. Holds the electric-current role: connectivity only — graph edges,
+     link underlines, focus rings. Never an action colour. */
+  --current-from: #6f58cd;
+  --current-to: #a78bfa;
+  --current: linear-gradient(141deg, #6f58cd, #a78bfa);
+
+  /* Kept: the backoffice and the light legacy classes still read these. */
   --paper: #faf9f5;
   --beige: #f1eee6;
   --white-pure: #ffffff;
-  --lavender: #cfc4f7;
-  --purple-deep: #4c3a8f;
-  --ink-surface: #151312;
-  --lime: #b8ff2e;
-  --purple-mid: #6f58cd;
-
   --ink-head: #171412;
   --ink-body: #2e2a25;
   --ink-muted: #6e685f;
-  --ink-muted-on-dark: #a39e94;
   --hairline: #e4e0d6;
+  --lime: #b8ff2e;
 
   /* Type scale — sizes, leading and tracking, as published */
   --text-caption: 12px;            --leading-caption: 1.5;
@@ -168,164 +186,169 @@ a { color: inherit; text-decoration: none; }
 input, select, textarea, button { font-family: inherit; color: inherit; }
 
 /* ------------------------------------------------------------------ */
-/* Marketing site — warm light canvas with alternating surfaces.        */
-/* Scoped to .site so the backoffice keeps its own theme.               */
+/* Marketing site — the operations canvas.                             */
+/* Scoped to .site so the backoffice keeps its own light theme.         */
 /* ------------------------------------------------------------------ */
 
+/* The void has to own the whole document or overscroll flashes the admin's
+   paper. Scoped with :has so the backoffice is untouched. */
+html:has(.site) { background: var(--void); }
+
 .site {
-  background: var(--paper);
-  color: var(--ink-body);
+  background: var(--void);
+  color: var(--t-body);
   min-height: 100vh;
   font-size: 16px;
   font-weight: 400;
-  line-height: 1.6;
+  line-height: 1.5;
 }
 
-.site ::selection { background: var(--lime); color: var(--ink-head); }
+.site ::selection { background: var(--signal); color: var(--void); }
 
-.wrap { max-width: 1240px; margin: 0 auto; padding: 0 24px; }
+.site .wrap { max-width: 1200px; margin: 0 auto; padding: 0 24px; }
 
-.site section { padding: 90px 0; }
+/* Section rhythm comes from surface stepping, not dividers. */
+.site section { padding: 104px 0; position: relative; z-index: 1; }
 
-/* Surfaces. Sections alternate between them to give the page its rhythm —
-   without the alternation the whole thing flattens into one long sheet. */
-.s-paper    { background: var(--paper); }
-.s-beige    { background: var(--beige); }
-.s-white    { background: var(--white-pure); }
-.s-lavender { background: var(--lavender); }
-.s-ink      { background: var(--ink-surface); color: var(--paper); }
+.site .s-void { background: var(--void); }
+.site .s-panel { background: var(--surface-2); }
 
-.s-ink .h-lg, .s-ink .h, .s-ink .h-sm, .s-ink .h-2xs, .s-ink .display { color: var(--paper); }
-.s-ink .body-muted { color: var(--ink-muted-on-dark); }
-.s-ink .lede { color: #E6E3DC; }
-.s-ink .caption { color: var(--ink-muted-on-dark); }
-
-/* Display type: weight 400 at large scale with negative tracking. */
-.display, .h-lg, .h, .h-sm, .h-2xs {
-  font-weight: 400;
+/* ---- Type. Weight 300 at display sizes: headlines carry by scale, not
+   thickness. Going bold here breaks the restrained register. ---- */
+.site .display,
+.site .h-lg,
+.site .h,
+.site .h-sm {
+  font-weight: 300;
+  color: var(--t-hi);
   text-wrap: balance;
-  color: var(--ink-head);
   letter-spacing: -0.02em;
-  line-height: 1.05;
+  line-height: 0.92;
+  margin: 0;
 }
-.display { font-size: clamp(42px, 5.7vw, 82px); }
-.h-lg    { font-size: clamp(32px, 4.1vw, 59px); }
-.h       { font-size: clamp(28px, 3.4vw, 49px); }
-.h-sm    { font-size: clamp(26px, 2.9vw, 42px); line-height: 1.1; }
-.h-2xs   { font-size: 20px; font-weight: 500; line-height: 1.3; letter-spacing: -0.01em; }
+/* Scale held to the reference: display 54-58, heading-lg 48. Going bigger was
+   drift — it also overflows the hero's copy column. */
+.site .display { font-size: clamp(34px, 4.2vw, 58px); line-height: 0.88; }
+.site .h-lg { font-size: clamp(30px, 3.4vw, 48px); }
+.site .h { font-size: clamp(26px, 2.6vw, 36px); }
+.site .h-sm { font-size: clamp(21px, 1.9vw, 26px); line-height: 1.15; }
+.site .h-2xs { font-size: 20px; font-weight: 400; line-height: 1.3; letter-spacing: -0.01em; color: var(--t-hi); margin: 0; }
 
-.label {
+.site .lede { font-size: 18px; line-height: 1.55; color: var(--t-body); max-width: 58ch; }
+.site .body-muted { font-size: 16px; line-height: 1.6; color: var(--t-mute); }
+.site .caption { font-size: 13px; line-height: 1.5; color: var(--t-mute); }
+
+/* ---- Mono. Technical data only: node labels, metrics, counts, status.
+   Never prose. Positive tracking, uppercase, small. ---- */
+.site .mono {
+  font-family: var(--font-mono-real), ui-monospace, monospace;
   font-size: 12px;
-  font-weight: 600;
-  letter-spacing: 0.08em;
+  letter-spacing: 0.06em;
   text-transform: uppercase;
-  color: var(--ink-muted);
+  color: var(--t-mute);
 }
-.s-ink .label { color: var(--lime); }
-.s-lavender .label { color: var(--purple-deep); }
+.site .mono-signal { color: var(--signal); }
 
-.lede { font-size: 18px; font-weight: 400; line-height: 1.6; color: var(--ink-body); max-width: 560px; }
-.body-muted { font-size: 16px; font-weight: 400; line-height: 1.6; color: var(--ink-muted); }
-.caption { font-size: 13px; color: var(--ink-muted); line-height: 1.5; }
-
-/* Primary action: the lime pill. */
-.pill {
+/* A status chip. Lime text on its own dark ground — the lime never becomes
+   the fill itself. */
+.site .chip {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
-  background: var(--lime);
-  color: var(--ink-head);
-  border: 1px solid var(--lime);
-  border-radius: 5px;
+  gap: 7px;
+  font-family: var(--font-mono-real), ui-monospace, monospace;
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--signal);
+  background: var(--signal-ground);
+  border-radius: 9999px;
+  padding: 5px 11px;
+}
+.site .chip::before {
+  content: "";
+  width: 5px; height: 5px;
+  border-radius: 9999px;
+  background: var(--signal);
+  box-shadow: 0 0 0 3px rgba(184, 255, 46, .16);
+}
+
+/* ---- Actions. 8px radius per the reference's button tier. ---- */
+.site .btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  border: 1px solid transparent;
+  border-radius: 8px;
   padding: 13px 22px;
   font-size: 14px;
   font-weight: 500;
-  letter-spacing: 0.02em;
-  text-transform: uppercase;
   cursor: pointer;
-}
-.pill:hover { filter: brightness(1.06); }
-
-/* Secondary action: same metrics, hairline border instead of a fill. */
-.pill-outline {
-  background: transparent;
-  border-color: rgba(23, 20, 18, .16);
-  color: var(--ink-muted);
-}
-.pill-outline:hover { filter: none; border-color: var(--ink-head); color: var(--ink-head); }
-.s-ink .pill-outline { border-color: rgba(250, 249, 245, .22); color: var(--ink-muted-on-dark); }
-.s-ink .pill-outline:hover { border-color: var(--paper); color: var(--paper); }
-
-/* Nav action: smaller again, ink outline. */
-.pill-nav {
-  background: transparent;
-  border-color: var(--ink-head);
-  color: var(--ink-head);
-  padding: 10px 18px;
-  font-size: 12px;
-}
-.pill-nav:hover { filter: none; background: var(--ink-head); color: var(--paper); }
-.pill:disabled { opacity: .5; cursor: not-allowed; }
-
-/* Secondary: bare text. */
-.ghost {
   background: none;
-  border: none;
-  padding: 0;
-  color: var(--ink-muted);
-  font-size: 14px;
-  font-weight: 500;
-  cursor: pointer;
+  color: var(--t-hi);
 }
-.ghost:hover { color: var(--ink-head); }
-.s-ink .ghost { color: var(--ink-muted-on-dark); }
-.s-ink .ghost:hover { color: var(--paper); }
+.site .btn-signal { background: var(--signal); color: #12200a; border-color: var(--signal); }
+.site .btn-signal:hover { filter: brightness(1.08); }
+.site .btn-ghost { border-color: var(--edge); color: var(--t-body); }
+.site .btn-ghost:hover { border-color: var(--t-mute); color: var(--t-hi); }
+.site .btn:disabled { opacity: .5; cursor: not-allowed; }
 
-.nav-link {
-  font-size: 14px;
-  font-weight: 500;
-  color: var(--ink-muted);
+/* Links get the current gradient as an underline — connectivity, not action. */
+.site .link-current {
+  color: var(--t-hi);
+  background-image: var(--current);
+  background-repeat: no-repeat;
+  background-size: 0% 1px;
+  background-position: 0 100%;
+  padding-bottom: 2px;
+  transition: background-size .35s cubic-bezier(.25, 1, .5, 1);
 }
-.nav-link:hover { color: var(--ink-head); }
+.site .link-current:hover { background-size: 100% 1px; }
 
-.two-col {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-  gap: 56px;
-  align-items: start;
+.site .nav-link { font-size: 14px; color: var(--t-body); }
+.site .nav-link:hover { color: var(--t-hi); }
+
+/* ---- Surfaces. Elevation is a colour step; drop shadows are forbidden. ---- */
+.site .card {
+  background: var(--surface-1);
+  border-radius: 16px;
+  padding: 28px;
+}
+.site .panel {
+  background: var(--surface-2);
+  border-radius: 24px;
 }
 
-.field {
+/* Transparent card whose edges are inset hairlines — the bottom edge glows
+   like a backlit indicator. */
+.site .card-lit {
+  border-radius: 24px;
+  padding: 24px 28px;
+  box-shadow:
+    rgba(255, 255, 255, .1) 0 0 0 1px inset,
+    rgba(184, 255, 46, .28) 0 1px 0 0 inset;
+}
+
+.site .rule { height: 1px; background: var(--edge); border: 0; margin: 0; }
+
+.site .field {
   width: 100%;
-  background: rgba(255,255,255,.06);
-  border: 1px solid rgba(255,255,255,.16);
-  border-radius: 7px;
-  color: var(--paper);
+  background: rgba(255, 255, 255, .03);
+  border: 1px solid var(--edge);
+  border-radius: 8px;
+  padding: 13px 14px;
   font-size: 15px;
-  font-weight: 400;
-  padding: 12px 14px;
-  outline: none;
-  transition: border-color .18s ease;
+  color: var(--t-hi);
 }
-.field::placeholder { color: var(--ink-muted-on-dark); }
-.field:focus { border-color: var(--lime); }
+.site .field::placeholder { color: var(--t-mute); }
+.site .field:focus { outline: none; border-color: var(--current-from); }
 
-/* Hairline separators, in the warm neutral the palette allows. */
-.rule { height: 1px; background: var(--hairline); border: none; margin: 0; }
-.s-ink .rule { background: rgba(255,255,255,.12); }
+.site a,
+.site button { transition: color .3s cubic-bezier(.5, 1, .89, 1), border-color .3s ease; }
+.site .btn { transition: filter .2s ease, border-color .2s ease, color .2s ease; }
 
-.reveal { visibility: hidden; }
-@media (prefers-reduced-motion: reduce) { .reveal { visibility: visible; } }
-
-.site a, .site button { transition: color .3s cubic-bezier(.5, 1, .89, 1); }
-.site .pill { transition: filter .2s ease, transform .2s cubic-bezier(.25, 1, .5, 1); }
-.faq-plus { transition: transform .3s cubic-bezier(.25, 1, .5, 1); }
-
-@media (max-width: 900px) {
-  .site section { padding: 60px 0; }
-  .two-col { grid-template-columns: 1fr; gap: 32px; }
-  .agent-row { grid-template-columns: 1fr !important; gap: 8px !important; }
-  .site h2[style*="sticky"] { position: static !important; }
+@media (max-width: 720px) {
+  .site section { padding: 72px 0; }
+  .two-col-grid { grid-template-columns: 1fr !important; }
 }
 
 /* ------------------------------------------------------------------ */
@@ -435,45 +458,151 @@ input, select, textarea, button { font-family: inherit; color: inherit; }
 }
 
 /* ------------------------------------------------------------------ */
-/* Background speck field                                              */
+/* Hero — the operations canvas                                        */
 /* ------------------------------------------------------------------ */
 
-.dotfield {
-  position: fixed;
-  inset: 0;
+/* Faint technical grid, the Langbase borrow. Two repeating-linear-gradients
+   rather than an image so it costs nothing and scales at any dpr. */
+.grid-bed {
+  background-image:
+    repeating-linear-gradient(to right,  rgba(255,255,255,.028) 0 1px, transparent 1px 64px),
+    repeating-linear-gradient(to bottom, rgba(255,255,255,.028) 0 1px, transparent 1px 64px);
+}
+
+.site .hero {
+  position: relative;
+  min-height: 100svh;
+  display: flex;
+  align-items: center;
+  padding: 96px 0 64px;
+  overflow: hidden;
+}
+
+/* Copy left, live graph right — the reference's asymmetric split. The graph
+   is allowed to bleed past the content column. */
+.hero-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.05fr);
+  gap: 56px;
+  align-items: center;
   width: 100%;
-  height: 100%;
+}
+
+/* .hero is a flex row, so .wrap would shrink to its content width and drag
+   both grid columns narrow with it. */
+.hero .wrap { width: 100%; }
+.hero-copy { position: relative; z-index: 2; }
+
+.ops-canvas {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 576 / 424;
+  min-height: 330px;
+}
+.ops-canvas canvas { display: block; width: 100%; height: 100%; }
+
+/* Radial bloom behind the graph — atmosphere, at an opacity low enough that it
+   never reads as a visible graphic. */
+.site .hero::after {
+  content: "";
+  position: absolute;
+  top: 42%; right: -6%;
+  width: 62vw; height: 62vw;
+  max-width: 900px; max-height: 900px;
+  transform: translateY(-50%);
+  background: radial-gradient(circle at center, rgba(111, 88, 205, .17) 0%, rgba(111, 88, 205, 0) 62%);
   pointer-events: none;
   z-index: 0;
 }
 
-/* Only the hero shows the field; every section below it is opaque and
-   covers the fixed canvas as it scrolls past. */
-.site section { position: relative; z-index: 1; }
-
-.hero {
-  min-height: 100svh;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  text-align: center;
-  background: transparent;
-  padding: 120px 0 90px;
+@media (max-width: 900px) {
+  .site .hero { min-height: 0; padding: 92px 0 64px; }
+  .hero-grid { grid-template-columns: minmax(0, 1fr); gap: 40px; }
+  .hero-copy { max-width: none; }
+  .ops-canvas { aspect-ratio: 576 / 470; min-height: 300px; }
 }
-/* The hero centres its children, which would otherwise shrink .wrap to its
-   content width and strand its max-width. The z-index is load-bearing: the
-   speck canvas is positioned, so without it the specks paint over the copy
-   rather than behind it. */
-.hero .wrap { width: 100%; position: relative; z-index: 1; }
-.hero .lede { max-width: 640px; margin-inline: auto; }
-.hero .display { max-width: 15ch; }
-.accent-purple { color: var(--purple-mid); }
 
-.hero-actions {
+/* Graph labels. Mono here is the Oxide borrow: these are system names and
+   technical data, which is the only role mono is allowed to hold. */
+.ops-core-label,
+.ops-core-sub,
+.ops-node-label {
+  font-family: var(--font-mono-real), ui-monospace, monospace;
+  text-transform: uppercase;
+}
+.ops-core-label { font-size: 13px; fill: var(--t-hi); letter-spacing: .1em; }
+.ops-core-sub   { font-size: 8.5px; fill: var(--signal); letter-spacing: .09em; }
+.ops-node-label { font-size: 10.5px; fill: var(--t-body); letter-spacing: .09em; }
+
+/* Hero telemetry row — facts in mono, values in the signal colour. */
+.metrics {
   display: flex;
   flex-wrap: wrap;
-  gap: 12px;
-  justify-content: center;
-  align-items: center;
+  gap: 20px 32px;
+  margin-top: 40px;
+  padding-top: 24px;
+  border-top: 1px solid var(--edge);
+}
+.metric-value {
+  font-family: var(--font-mono-real), ui-monospace, monospace;
+  font-size: 22px;
+  color: var(--signal);
+  letter-spacing: -0.01em;
+  display: block;
+}
+.metric-label {
+  font-family: var(--font-mono-real), ui-monospace, monospace;
+  font-size: 10.5px;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  color: var(--t-mute);
+  display: block;
+  margin-top: 5px;
+}
+
+/* Two-column content split used by the FAQ and contact sections. */
+.two-col {
+  display: grid;
+  grid-template-columns: minmax(0, 0.8fr) minmax(0, 1.4fr);
+  gap: 56px;
+}
+
+/* Agent rows: category, name, description. Collapses to a stack on mobile so
+   the 110px category column never squeezes the name to one word per line. */
+.agent-row {
+  display: grid;
+  grid-template-columns: 104px minmax(0, 0.9fr) minmax(0, 1.6fr);
+  gap: 28px;
+  align-items: baseline;
+  padding: 20px 0;
+  transition: background .25s ease, padding-left .25s cubic-bezier(.25,1,.5,1);
+}
+/* Hovering a row lights its edge in the signal colour — the same status
+   language the chips use. */
+.agent-row:hover { background: rgba(255,255,255,.022); box-shadow: inset 2px 0 0 var(--signal); padding-left: 14px; }
+
+@media (max-width: 900px) {
+  .two-col { grid-template-columns: 1fr; gap: 36px; }
+  .two-col h2[style*="sticky"] { position: static !important; }
+  .agent-row { grid-template-columns: 1fr; gap: 8px; }
+  .agent-row:hover { padding-left: 10px; }
+  .footer-grid { grid-template-columns: 1fr !important; gap: 36px !important; }
+}
+
+/* Stat values share the hero's telemetry treatment — mono, signal colour. */
+.stat-value {
+  font-family: var(--font-mono-real), ui-monospace, monospace;
+  font-size: clamp(30px, 3.4vw, 42px);
+  line-height: 1;
+  color: var(--signal);
+  letter-spacing: -0.02em;
+}
+
+/* Second line inside a graph node: what kind of integration it is. */
+.ops-node-sub {
+  font-family: var(--font-mono-real), ui-monospace, monospace;
+  font-size: 8.8px;
+  fill: var(--t-mute);
+  letter-spacing: .07em;
+  text-transform: uppercase;
 }

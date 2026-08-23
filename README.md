@@ -46,35 +46,53 @@ run the site locally.
 
 ## Design system
 
-Warm light canvas with alternating section surfaces, measured from the reference
-site the design follows. Tokens sit at the top of `app/globals.css`.
+Dark violet-black canvas — a live operations canvas, not a generic dark mode.
+Grounded in Refero research: n8n as the primary reference (workflow canvas at
+midnight), Oxide Computer for monospace/technical discipline, Langbase for the
+faint grid and data-as-motion. Tokens sit at the top of `app/globals.css`.
 
 | Role | Token | Value |
 |---|---|---|
-| Page canvas | `--paper` | `#faf9f5` |
-| Alternate surface | `--beige` | `#f1eee6` |
-| Alternate surface | `--white-pure` | `#ffffff` |
-| Accent band | `--lavender` | `#cfc4f7` |
-| Contrast band | `--ink-surface` | `#151312` |
-| Action | `--lime` | `#b8ff2e` |
-| Headings / body / muted | `--ink-head` `--ink-body` `--ink-muted` | `#171412` `#2e2a25` `#6e685f` |
+| Page canvas | `--void` | `#0e0918` |
+| Card surface | `--surface-1` | `#1a1624` |
+| Panel surface | `--surface-2` | `#1b1728` |
+| Hairline | `--edge` | `#3e3a46` |
+| Headings / body / muted | `--t-hi` `--t-body` `--t-mute` | `#ffffff` `#d1cece` `#9d9797` |
+| Signal (action + status) | `--signal` | `#b8ff2e` |
+| Current (connectivity) | `--current-from` → `--current-to` | `#6f58cd` → `#a78bfa` |
 
-Rules worth knowing before changing anything visual:
+Rules worth knowing before changing anything visual. These are the traits the
+reference lock preserves; softening them collapses the direction:
 
-- **Sections alternate surfaces**, in this order: paper, ink, beige, paper,
-  lavender, ink, white, ink. Run them all on one surface and the page flattens
-  into a single sheet — the alternation is what gives it rhythm.
-- Apply a surface with its class (`.s-paper`, `.s-ink`, `.s-beige`,
-  `.s-white`, `.s-lavender`). `.s-ink` re-tints its own children, so text inside
-  a dark band needs no extra colour.
-- Display type is **weight 400** at large scale with about `-0.02em` tracking.
-  Small headings step up to 500 or 600.
-- `--lime` is the action colour, used on filled buttons only.
-- Inter throughout, matching the reference.
+- **The violet undertone is load-bearing.** Never substitute `#000` or a neutral
+  charcoal for `--void`. A neutral dark reads as generic dark mode; the violet
+  reads as technology.
+- **Two accent colours, two fixed roles, no crossover.** `--signal` (lime) is
+  action and status only — buttons, chips, live values, graph pulses. It is
+  never a background, never a section fill, never decorative. `--current`
+  (violet gradient) is connectivity only — graph edges, link underlines, focus
+  rings. It is never an action colour.
+- **Elevation is a colour step, never a shadow.** Three surfaces exist: void →
+  card → panel. Drop shadows are not used anywhere on the marketing site.
+- **Display type is weight 300**, up to about 58px, tracking `-0.02em`,
+  line-height `0.88`. Headlines carry by scale, not thickness. Bold display type
+  breaks the register. Going larger than ~58px also overflows the hero column.
+- **Monospace is for technical data only** — node labels, metrics, section
+  numbers, status chips. Never for prose. JetBrains Mono via `--font-mono-real`.
+- **Radius tiers:** 8px buttons and inputs, 16px cards, 24px large panels,
+  9999px for chips and pills only.
+- **Sections alternate `.s-void` and `.s-panel`.** There are no divider lines
+  between sections — a section change *is* a background change.
+- Imagery is code-native: animated SVG and canvas, no photography. The hero
+  graph lives in `components/site/OpsCanvas.tsx`, with its geometry extracted to
+  `lib/ops-graph.ts` so it can be tested without loading GSAP.
 
-`--ink` belongs to the backoffice and is a different colour. The marketing dark
-band is `--ink-surface`; the two collided once and the later definition silently
-won.
+Marketing classes are all scoped under `.site`. That is not cosmetic: the
+backoffice defines `.btn-ghost`, `.card` and `.field` later in the same
+stylesheet, so an unscoped marketing rule loses to it silently.
+
+`--ink` belongs to the backoffice and is a different colour from anything here;
+the two collided once and the later definition silently won.
 
 ## Backoffice
 
@@ -150,6 +168,20 @@ Things that have already cost time here.
 - **A positioned canvas paints above in-flow text.** `position: fixed` with `z-index: 0`
   still outranks non-positioned content, so `.hero .wrap` carries `position: relative;
   z-index: 1` to keep the copy above the speck field.
+- **`grid-template-columns: 1fr` is not the same as `minmax(0, 1fr)`.** `1fr`
+  carries an `auto` minimum, so a wide child (the hero's metrics row) pushes the
+  track past the viewport. Combined with the hero's `overflow: hidden` this
+  clips content silently instead of showing a scrollbar — no horizontal overflow
+  is reported, and the bug is invisible unless you compare a child's width to
+  its track's.
+- **A flex or centred parent shrinks `.wrap` to its content.** `.site .hero` is
+  a flex row, so `.hero .wrap` needs an explicit `width: 100%` or both grid
+  columns collapse. This has now bitten twice.
+- **`.site section` (0,1,1) outranks a bare `.hero` (0,1,0)**, so section-level
+  overrides need the `.site` prefix to survive.
+- **The Browser pane's console panel accumulates across reloads and server
+  restarts.** Errors from an earlier broken build keep reappearing. Open a fresh
+  tab before concluding an error is real.
 - **Test files sit next to their source** as `*.test.ts`. See `TESTING.md`.
 
 ## Conventions

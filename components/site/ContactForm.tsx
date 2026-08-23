@@ -48,8 +48,8 @@ export default function ContactForm() {
         <input className="field" name="phone" placeholder="Phone (optional)" autoComplete="tel" />
       </div>
       <textarea className="field" name="message" placeholder="What are you trying to build or automate?" rows={3} required style={{ resize: "vertical" }} />
-      {error && <p style={{ color: "var(--lime)", fontSize: 14, margin: 0 }}>{error}</p>}
-      <button type="submit" className="pill" disabled={status === "sending"} style={{ alignSelf: "flex-start" }}>
+      {error && <p style={{ color: "#ff8a8a", fontSize: 14, margin: 0 }}>{error}</p>}
+      <button type="submit" className="btn btn-signal" disabled={status === "sending"} style={{ alignSelf: "flex-start" }}>
         {status === "sending" ? "Sending…" : "Start a project"}
       </button>
     </form>

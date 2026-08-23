@@ -31,7 +31,7 @@ export default function Privacy() {
   return (
     <div className="site">
       <SiteHeader />
-      <section className="s-paper" style={{ paddingTop: 60 }}>
+      <section className="s-void" style={{ paddingTop: 60 }}>
         <div className="wrap">
           <h1 className="h-lg" style={{ margin: "0 0 60px", maxWidth: 780 }}>Privacy.</h1>
           <div style={{ display: "flex", flexDirection: "column", gap: 36, maxWidth: 640 }}>
@@ -43,7 +43,7 @@ export default function Privacy() {
             ))}
           </div>
           <p style={{ marginTop: 60 }}>
-            <Link href="/" className="ghost">← Back home</Link>
+            <Link href="/" className="link-current">← Back home</Link>
           </p>
         </div>
       </section>
